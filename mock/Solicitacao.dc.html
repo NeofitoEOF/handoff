@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Responder solicitação</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B63}a:hover{color:#0B5A53}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 960px; box-sizing: border-box; background: #F5F5F2; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1F23; display: flex; flex-wrap: wrap">
+<nav aria-label="Navegação principal" style="flex: 1 1 240px; max-width: 100%; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E2E2DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #0E6B63; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">H</div>
+<div style="font-weight: 600; font-size: 16px">Handoff</div>
+<div style="font-size: 12px; color: #5A6169; margin-left: auto">Empresa Exemplo</div>
+</div>
+<button type="button" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 8px 12px; border: 1px solid #E2E2DC; border-radius: 10px; background: #F5F5F2; font: inherit; color: inherit; text-align: left; cursor: pointer">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #5A6169; text-transform: uppercase; letter-spacing: 0.06em">Setor</span><span style="font-size: 14px; font-weight: 600">Compras</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+<a href="{{n.href}}" style="{{n.style}}"><span>{{n.label}}</span><sc-if value="{{n.count}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 600; background: #0E6B63; color: #FFFFFF; border-radius: 999px; padding: 1px 8px">{{n.count}}</span></sc-if></a>
+</sc-for>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid #ECECE8">
+<div style="width: 32px; height: 32px; border-radius: 999px; background: #E4ECFA; color: #24489C; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">AR</div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 500">Ana Ribeiro</span><span style="font-size: 12px; color: #5A6169">Membro · Compras</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 40px 40px; display: flex; flex-direction: column; gap: 20px">
+<p style="margin: 0; font-size: 13px; color: #5A6169"><a href="Main.dc.html">Caixa de entrada</a> / Provisões de outubro</p>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">Provisões de outubro</h1>
+<span style="display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #E4ECFA; color: #24489C">Em preenchimento</span>
+</div>
+<p style="margin: 0; font-size: 14px; color: #3D434A">Pedido pela Controladoria · atribuído a você · prazo 06/10, vence em 2 dias · modelo Provisões mensais v3</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #E2E2DC">
+<button type="button" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; color: #3D434A; cursor: pointer">Formulário</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid #0E6B63; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: #0B5A53; cursor: pointer">Enviar planilha .xlsx</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; color: #3D434A; cursor: pointer">Linha do tempo</button>
+</div>
+<section style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px">
+<div style="width: 40px; height: 40px; border-radius: 8px; background: #E3F0EE; color: #0B5A53; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h6"></path></svg></div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 240px">
+<span style="font-size: 14px; font-weight: 600">provisoes_compras_out26.xlsx</span>
+<span style="font-size: 12px; color: #5A6169">48 linhas · enviado agora · SHA-256 <span style="font-family: 'IBM Plex Mono', monospace">3f9a…7c21</span></span>
+</div>
+<a href="#" style="font-size: 13px; padding: 8px 0">Trocar arquivo</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="display: inline-flex; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #E3F0EE; color: #0B5A53">45 linhas válidas</span>
+<span style="display: inline-flex; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #FBE4E1; color: #A3261B">3 linhas com erro</span>
+</div>
+<p style="margin: 0; font-size: 13px; color: #3D434A">Nada foi gravado ainda. Corrija as linhas aqui mesmo ou reenvie a planilha; o arquivo original fica guardado junto com a resposta.</p>
+</section>
+<section aria-labelledby="prev-titulo" style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; overflow-x: auto">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px">
+<h2 id="prev-titulo" style="margin: 0; font-size: 15px; font-weight: 600">Pré-visualização</h2>
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; min-height: 32px"><input type="checkbox" style="width: 16px; height: 16px; accent-color: #0E6B63">Mostrar só linhas com erro</label>
+</div>
+<div style="display: grid; grid-template-columns: 56px minmax(0, 1.5fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 2fr); gap: 12px; padding: 10px 20px; min-width: 820px; border-top: 1px solid #ECECE8; font-size: 12px; font-weight: 600; color: #5A6169; text-transform: uppercase; letter-spacing: 0.05em">
+<div>Linha</div><div>CNPJ fornecedor</div><div>Fornecedor</div><div style="text-align: right">Valor (R$)</div><div>Competência</div><div>Validação</div>
+</div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<div style="{{r.rowStyle}}">
+<div style="font-family: 'IBM Plex Mono', monospace; color: #5A6169">{{r.line}}</div>
+<div style="{{r.cnpjStyle}}">{{r.cnpj}}</div>
+<div>{{r.name}}</div>
+<div style="{{r.valStyle}}">{{r.val}}</div>
+<div style="{{r.compStyle}}">{{r.comp}}</div>
+<div style="{{r.msgStyle}}">{{r.msg}}</div>
+</div>
+</sc-for>
+<div style="padding: 12px 20px; min-width: 820px; border-top: 1px solid #ECECE8; font-size: 13px; color: #5A6169">+ 42 linhas válidas não exibidas</div>
+</section>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+<button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #D6D6CF; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 14px; color: #1B1F23; cursor: pointer">Baixar modelo .xlsx</button>
+<button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #D6D6CF; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 14px; color: #1B1F23; cursor: pointer">Corrigir 3 linhas</button>
+<button type="button" style="height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #0E6B63; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Importar 45 linhas válidas</button>
+</div>
+</div>
+<aside style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<section style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Instruções da Controladoria</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #3D434A">Informe as despesas de outubro já contratadas e ainda não faturadas, por fornecedor. Anexe o contrato ou pedido de compra quando o valor passar de R$ 20.000.</p>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0 0 4px; font-size: 15px; font-weight: 600">Campo calculado</h2>
+<span style="font-size: 13px; color: #5A6169">Total das provisões válidas</span>
+<span style="font-size: 22px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">R$ [TOTAL]</span>
+<span style="font-size: 12px; color: #5A6169">Soma da coluna Valor, recalculada a cada correção</span>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Anexos de referência</h2>
+<a href="#" style="font-size: 14px; padding: 4px 0">contrato_quadro_fornecedores.pdf</a>
+<a href="#" style="font-size: 14px; padding: 4px 0">provisoes_setembro_aprovadas.xlsx</a>
+</section>
+<p style="margin: 0; font-size: 13px; color: #3D434A; padding: 0 4px">Depois de importar, envie para revisão. Quem aprova é outra pessoa da Controladoria.</p>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font-size: 14px; text-decoration: none;';
+    const items = [['Caixa de entrada', 'Main.dc.html', 3], ['Solicitações do setor', '#', 0], ['Modelos', '#', 0], ['Painel do setor', '#', 0], ['Auditoria', '#', 0]];
+    const nav = items.map((it, i) => ({ label: it[0], href: it[1], count: it[2], style: i === 0 ? base + ' background: #E3F0EE; color: #0B5A53; font-weight: 600;' : base + ' color: #3D434A;' }));
+    const row = 'display: grid; grid-template-columns: 56px minmax(0, 1.5fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 2fr); gap: 12px; align-items: center; padding: 11px 20px; min-width: 820px; border-top: 1px solid #ECECE8; font-size: 13px;';
+    const bad = 'background: #FBE4E1; color: #A3261B; font-weight: 600; border-radius: 6px; padding: 4px 6px; margin: -4px -6px;';
+    const data = [
+      ['2', '12.345.678/0001-95', 'Transportes Cerrado Ltda', '18.400,00', '10/2026', '', ''],
+      ['3', '98.765.432/0001-10', 'Embalagens Goiás S.A.', '7.920,50', '10/2026', '', ''],
+      ['7', '11.222.333/0001-00', 'Agroquímica Norte', '32.000,00', '10/2026', 'cnpj', 'CNPJ inválido: dígito verificador não confere'],
+      ['12', '45.678.901/0001-23', 'Serviços Delta', '—', '10/2026', 'val', 'Valor é obrigatório'],
+      ['19', '22.333.444/0001-55', 'Manutenção Silva', '4.150,00', '09/2026', 'comp', 'Competência deve ser 10/2026'],
+      ['21', '33.444.555/0001-66', 'Energia Centro-Oeste', '61.230,00', '10/2026', '', '']
+    ];
+    const rows = data.map((d) => ({
+      line: d[0], cnpj: d[1], name: d[2], val: d[3], comp: d[4],
+      msg: d[6] || 'OK',
+      rowStyle: d[5] ? row + ' background: #FFF8F7;' : row,
+      cnpjStyle: "font-family: 'IBM Plex Mono', monospace; font-size: 12px;" + (d[5] === 'cnpj' ? ' ' + bad : ''),
+      valStyle: "text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12px;" + (d[5] === 'val' ? ' ' + bad : ''),
+      compStyle: d[5] === 'comp' ? bad : '',
+      msgStyle: d[5] ? 'color: #A3261B; font-weight: 500;' : 'color: #0B5A53; font-weight: 500;'
+    }));
+    return { nav, rows };
+  }
+}
+</script>
+</body>
+</html>

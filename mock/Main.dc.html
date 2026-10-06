@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Caixa de entrada</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B63}a:hover{color:#0B5A53}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 880px; box-sizing: border-box; background: #F5F5F2; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1F23; display: flex; flex-wrap: wrap">
+<nav aria-label="Navegação principal" style="flex: 1 1 240px; max-width: 100%; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E2E2DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #0E6B63; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">H</div>
+<div style="font-weight: 600; font-size: 16px">Handoff</div>
+<div style="font-size: 12px; color: #5A6169; margin-left: auto">Empresa Exemplo</div>
+</div>
+<button type="button" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 8px 12px; border: 1px solid #E2E2DC; border-radius: 10px; background: #F5F5F2; font: inherit; color: inherit; text-align: left; cursor: pointer">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #5A6169; text-transform: uppercase; letter-spacing: 0.06em">Setor</span><span style="font-size: 14px; font-weight: 600">Controladoria</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="7">
+<a href="{{n.href}}" style="{{n.style}}"><span>{{n.label}}</span><sc-if value="{{n.count}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 600; background: #0E6B63; color: #FFFFFF; border-radius: 999px; padding: 1px 8px">{{n.count}}</span></sc-if></a>
+</sc-for>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid #ECECE8">
+<div style="width: 32px; height: 32px; border-radius: 999px; background: #E3F0EE; color: #0B5A53; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">MC</div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 500">Mariana Costa</span><span style="font-size: 12px; color: #5A6169">Gestora · Controladoria</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Caixa de entrada</h1>
+<p style="margin: 6px 0 0; font-size: 14px; color: #5A6169">Pedidos entre setores que dependem de você ou da Controladoria.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<label style="position: relative; display: flex"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Buscar solicitações</span><input type="search" placeholder="Buscar por título, setor ou pessoa" style="width: 280px; max-width: 100%; height: 44px; box-sizing: border-box; padding: 0 14px; border: 1px solid #D6D6CF; border-radius: 10px; font: inherit; font-size: 14px; background: #FFFFFF; color: #1B1F23"></label>
+<a href="Solicitacao.dc.html" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; background: #0E6B63; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Nova solicitação</a>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #E2E2DC">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+<button type="button" style="{{t.style}}">{{t.label}} <span style="color: #5A6169; font-weight: 500">{{t.count}}</span></button>
+</sc-for>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; overflow-x: auto">
+<div style="display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.7fr) minmax(0, 1.3fr) minmax(0, 1.1fr) 150px; gap: 16px; padding: 12px 20px; min-width: 820px; font-size: 12px; font-weight: 600; color: #5A6169; text-transform: uppercase; letter-spacing: 0.05em">
+<div>Solicitação</div><div>De → Para</div><div>Responsável</div><div>Prazo</div><div>Status</div>
+</div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<a href="{{r.href}}" style="display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.7fr) minmax(0, 1.3fr) minmax(0, 1.1fr) 150px; gap: 16px; align-items: center; padding: 14px 20px; min-width: 820px; border-top: 1px solid #ECECE8; text-decoration: none; color: #1B1F23">
+<div style="display: flex; flex-direction: column; gap: 3px; min-width: 0"><span style="font-size: 14px; font-weight: 600">{{r.title}}</span><span style="font-size: 12px; color: #5A6169">{{r.model}}</span></div>
+<div style="font-size: 14px">{{r.route}}</div>
+<div style="font-size: 14px">{{r.owner}}</div>
+<div style="{{r.dueStyle}}">{{r.due}}</div>
+<div><span style="{{r.chipStyle}}">{{r.status}}</span></div>
+</a>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5A6169">Clique em uma linha para abrir. Pedidos atrasados também vão para o gestor do setor de destino por e-mail.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font-size: 14px; text-decoration: none;';
+    const items = [['Caixa de entrada', 'Main.dc.html', 7], ['Solicitações do setor', '#', 0], ['Modelos', '#', 0], ['Painel do setor', '#', 0], ['Gestão do setor', 'Setor.dc.html', 0], ['Auditoria', '#', 0], ['Administração da empresa', 'Admin.dc.html', 0]];
+    const active = 0;
+    const nav = items.map((it, i) => ({ label: it[0], href: it[1], count: it[2], style: i === active ? base + ' background: #E3F0EE; color: #0B5A53; font-weight: 600;' : base + ' color: #3D434A;' }));
+    const tb = 'min-height: 44px; padding: 0 14px; border: 0; background: none; font: inherit; font-size: 14px; cursor: pointer; margin-bottom: -1px;';
+    const tabs = [['Para mim', 4], ['Do meu setor', 12], ['Aguardando minha aprovação', 2], ['Atrasadas', 1]].map((t, i) => ({ label: t[0], count: t[1], style: i === 0 ? tb + ' border-bottom: 2px solid #0E6B63; color: #0B5A53; font-weight: 600;' : tb + ' border-bottom: 2px solid transparent; color: #3D434A;' }));
+    const chips = { 'Aberta': ['#ECECE8', '#3D434A'], 'Em preenchimento': ['#E4ECFA', '#24489C'], 'Em revisão': ['#E3F0EE', '#0B5A53'], 'Devolvida': ['#FCEFD9', '#8A4B00'], 'Atrasada': ['#FBE4E1', '#A3261B'], 'Fechada': ['#E8E8E4', '#1B1F23'] };
+    const dueTone = { late: 'font-size: 14px; color: #A3261B; font-weight: 600;', today: 'font-size: 14px; color: #8A4B00; font-weight: 600;', ok: 'font-size: 14px; color: #1B1F23;', done: 'font-size: 14px; color: #5A6169;' };
+    const data = [
+      ['Provisões de outubro', 'Modelo: Provisões mensais v3', 'Controladoria → Compras', 'Ana Ribeiro', 'vence em 2 dias', 'ok', 'Em preenchimento', 'Solicitacao.dc.html'],
+      ['Notas com divergência de NCM — set/26', 'Modelo: Divergências fiscais v2', 'Fiscal → Logística', 'Convidado por link', 'atrasada 1 dia', 'late', 'Atrasada', '#'],
+      ['Accruals de marketing — out/26', 'Modelo: Accruals por área v1', 'Controladoria → Marketing', 'Bruno Lima', 'vence hoje', 'today', 'Em revisão', 'Revisao.dc.html'],
+      ['Horas extras — 2ª quinzena', 'Modelo: Ajustes de folha v4', 'RH → Controladoria', 'Você', 'vence em 5 dias', 'ok', 'Aberta', '#'],
+      ['Previsão de pagamentos — semana 41', 'Modelo: Fluxo de caixa semanal v2', 'Financeiro → Controladoria', 'Júlia Martins', 'vence em 3 dias', 'ok', 'Devolvida', '#'],
+      ['Inventário de ativos — Q3', 'Modelo: Ativos imobilizados v1', 'Controladoria → Manutenção', 'Carla Souza', 'aprovada em 02/10', 'done', 'Fechada', '#']
+    ];
+    const rows = data.map((d) => ({ title: d[0], model: d[1], route: d[2], owner: d[3], due: d[4], dueStyle: dueTone[d[5]], status: d[6], href: d[7], chipStyle: 'display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: ' + chips[d[6]][0] + '; color: ' + chips[d[6]][1] + ';' }));
+    return { nav, tabs, rows };
+  }
+}
+</script>
+</body>
+</html>

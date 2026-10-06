@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Gestão do setor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B63}a:hover{color:#0B5A53}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 880px; box-sizing: border-box; background: #F5F5F2; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1F23; display: flex; flex-wrap: wrap">
+<nav aria-label="Navegação principal" style="flex: 1 1 240px; max-width: 100%; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E2E2DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #0E6B63; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">H</div>
+<div style="font-weight: 600; font-size: 16px">Handoff</div>
+<div style="font-size: 12px; color: #5A6169; margin-left: auto">Empresa Exemplo</div>
+</div>
+<button type="button" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 8px 12px; border: 1px solid #E2E2DC; border-radius: 10px; background: #F5F5F2; font: inherit; color: inherit; text-align: left; cursor: pointer">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #5A6169; text-transform: uppercase; letter-spacing: 0.06em">Setor</span><span style="font-size: 14px; font-weight: 600">Controladoria</span></span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="7">
+<a href="{{n.href}}" style="{{n.style}}"><span>{{n.label}}</span><sc-if value="{{n.count}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 600; background: #0E6B63; color: #FFFFFF; border-radius: 999px; padding: 1px 8px">{{n.count}}</span></sc-if></a>
+</sc-for>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid #ECECE8">
+<div style="width: 32px; height: 32px; border-radius: 999px; background: #E3F0EE; color: #0B5A53; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">MC</div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 500">Mariana Costa</span><span style="font-size: 12px; color: #5A6169">Gestora · Controladoria</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px">
+<div>
+<p style="margin: 0 0 6px; font-size: 13px; color: #5A6169">Setor Controladoria</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Gestão do setor</h1>
+<p style="margin: 8px 0 0; font-size: 14px; color: #3D434A; max-width: 680px">Como gestora, você convida e remove pessoas do setor e define o papel de cada uma, até Aprovador. Gestores são nomeados pelo Admin da Empresa.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+<section aria-labelledby="usuarios-titulo" style="flex: 999 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; overflow-x: auto">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px">
+<h2 id="usuarios-titulo" style="margin: 0; font-size: 16px; font-weight: 600">Usuários do setor <span style="color: #5A6169; font-weight: 500">5</span></h2>
+<span style="font-size: 13px; color: #5A6169">Sem custo por usuário no seu plano</span>
+</div>
+<div style="display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 110px; gap: 16px; padding: 10px 20px; min-width: 760px; border-top: 1px solid #ECECE8; font-size: 12px; font-weight: 600; color: #5A6169; text-transform: uppercase; letter-spacing: 0.05em">
+<div>Pessoa</div><div>Papel</div><div>Outros setores</div><div>Situação</div><div></div>
+</div>
+<sc-for list="{{users}}" as="u" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) 110px; gap: 16px; align-items: center; padding: 12px 20px; min-width: 760px; border-top: 1px solid #ECECE8">
+<div style="display: flex; align-items: center; gap: 10px; min-width: 0">
+<div style="width: 34px; height: 34px; flex: none; border-radius: 999px; background: #ECECE8; color: #3D434A; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">{{u.ini}}</div>
+<div style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 14px; font-weight: 600">{{u.name}}</span><span style="font-size: 12px; color: #5A6169; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{u.email}}</span></div>
+</div>
+<div><button type="button" aria-label="{{u.roleLabel}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid #D6D6CF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 13px; color: #1B1F23; cursor: pointer">{{u.role}}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+<div style="font-size: 13px; color: #3D434A">{{u.other}}</div>
+<div><span style="{{u.statusStyle}}">{{u.status}}</span></div>
+<div style="font-size: 13px; text-align: right"><sc-if value="{{u.canAct}}" hint-placeholder-val="{{true}}"><a href="#" style="color: #A3261B">{{u.action}}</a></sc-if><sc-if value="{{u.locked}}" hint-placeholder-val="{{false}}"><span style="color: #5A6169">Único gestor</span></sc-if></div>
+</div>
+</sc-for>
+</section>
+<div style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<form style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Convidar para a Controladoria</h2>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500">E-mail
+<input type="email" placeholder="nome@empresa.com.br" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #D6D6CF; border-radius: 8px; font: inherit; font-size: 14px; color: #1B1F23"></label>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+<legend style="font-size: 13px; font-weight: 500; margin-bottom: 8px">Papel</legend>
+<label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 2px solid #0E6B63; border-radius: 10px; background: #F2F8F7; cursor: pointer"><input type="radio" name="papel" checked style="margin: 3px 0 0; accent-color: #0E6B63"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Membro</span><span style="font-size: 13px; color: #3D434A">Abre pedidos e preenche os que o setor recebe</span></span></label>
+<label style="display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid #D6D6CF; border-radius: 10px; cursor: pointer"><input type="radio" name="papel" style="margin: 3px 0 0; accent-color: #0E6B63"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Aprovador</span><span style="font-size: 13px; color: #3D434A">Também aprova ou devolve respostas do setor</span></span></label>
+</fieldset>
+<button type="button" style="height: 44px; border: 0; border-radius: 10px; background: #0E6B63; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Enviar convite</button>
+<p style="margin: 0; font-size: 12px; color: #5A6169">Quem preenche um pedido nunca aprova esse mesmo pedido, seja qual for o papel.</p>
+</form>
+<section style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Convidados por link ativos</h2>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-top: 4px">
+<span style="font-size: 14px; font-weight: 500">consultoria@parceiro.com.br</span>
+<span style="font-size: 13px; color: #3D434A">Laudo de avaliação de ativos · expira em 10/10</span>
+<a href="#" style="font-size: 13px; color: #A3261B; align-self: flex-start; padding: 4px 0">Revogar link</a>
+</div>
+<p style="margin: 0; font-size: 12px; color: #5A6169">Convidados respondem só ao pedido do link, sem conta e sem custo.</p>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font-size: 14px; text-decoration: none;';
+    const items = [['Caixa de entrada', 'Main.dc.html', 7], ['Solicitações do setor', '#', 0], ['Modelos', '#', 0], ['Painel do setor', '#', 0], ['Gestão do setor', 'Setor.dc.html', 0], ['Auditoria', '#', 0], ['Administração da empresa', 'Admin.dc.html', 0]];
+    const active = 4;
+    const nav = items.map((it, i) => ({ label: it[0], href: it[1], count: it[2], style: i === active ? base + ' background: #E3F0EE; color: #0B5A53; font-weight: 600;' : base + ' color: #3D434A;' }));
+    const chip = (bg, fg) => 'display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: ' + bg + '; color: ' + fg + ';';
+    const data = [
+      ['MC', 'Mariana Costa (você)', 'mariana.costa@empresa.com.br', 'Gestora', '—', 'Ativa', 'ok', '', true],
+      ['RD', 'Rafael Dias', 'rafael.dias@empresa.com.br', 'Aprovador', 'Fiscal · Membro', 'Ativo', 'ok', 'Remover', false],
+      ['JM', 'Júlia Martins', 'julia.martins@empresa.com.br', 'Membro', '—', 'Ativa', 'ok', 'Remover', false],
+      ['LP', 'Lucas Pereira', 'lucas.pereira@empresa.com.br', 'Membro', 'Compras · Aprovador', 'Ativo', 'ok', 'Remover', false],
+      ['PA', 'Pedro Alves', 'pedro.alves@empresa.com.br', 'Membro', '—', 'Convite pendente', 'pend', 'Reenviar', false]
+    ];
+    const users = data.map((d) => ({ ini: d[0], name: d[1], email: d[2], role: d[3], roleLabel: 'Papel de ' + d[1] + ': ' + d[3], other: d[4], status: d[5], statusStyle: d[6] === 'ok' ? chip('#E3F0EE', '#0B5A53') : chip('#FCEFD9', '#8A4B00'), action: d[7], canAct: !d[8], locked: d[8] }));
+    return { nav, users };
+  }
+}
+</script>
+</body>
+</html>

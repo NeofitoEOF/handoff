@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Administração da empresa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B63}a:hover{color:#0B5A53}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 880px; box-sizing: border-box; background: #F5F5F2; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1F23; display: flex; flex-wrap: wrap">
+<nav aria-label="Navegação principal" style="flex: 1 1 240px; max-width: 100%; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E2E2DC; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #0E6B63; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">H</div>
+<div style="font-weight: 600; font-size: 16px">Handoff</div>
+<div style="font-size: 12px; color: #5A6169; margin-left: auto">Empresa Exemplo</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-height: 52px; justify-content: center; padding: 8px 12px; border: 1px solid #E2E2DC; border-radius: 10px; background: #F5F5F2">
+<span style="font-size: 11px; color: #5A6169; text-transform: uppercase; letter-spacing: 0.06em">Perfil</span><span style="font-size: 14px; font-weight: 600">Admin da Empresa</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+<a href="{{n.href}}" style="{{n.style}}"><span>{{n.label}}</span></a>
+</sc-for>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid #ECECE8">
+<div style="width: 32px; height: 32px; border-radius: 999px; background: #E4ECFA; color: #24489C; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">RT</div>
+<div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 500">Roberto Telles</span><span style="font-size: 12px; color: #5A6169">Admin · Empresa Exemplo</span></div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Setores da empresa</h1>
+<p style="margin: 6px 0 0; font-size: 14px; color: #3D434A; max-width: 640px">Você habilita os setores e nomeia quem os gerencia. Cada gestor convida e organiza as pessoas do próprio setor.</p>
+</div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #0E6B63; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Habilitar setor</button>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #5A6169; text-transform: uppercase; letter-spacing: 0.05em">Plano</span><span style="font-size: 16px; font-weight: 600">Business</span></div>
+<div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 13px"><span>6 de 10 setores habilitados</span><span style="color: #5A6169">cobrança por setor</span></div>
+<div style="height: 8px; border-radius: 999px; background: #ECECE8; overflow: hidden"><div style="width: 60%; height: 100%; background: #0E6B63"></div></div>
+</div>
+<span style="font-size: 13px; color: #3D434A">Usuários dos setores e convidados por link não pagam</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px">
+<sc-for list="{{sectors}}" as="s" hint-placeholder-count="6">
+<article style="{{s.cardStyle}}">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 600">{{s.name}}</h2>
+<span style="{{s.chipStyle}}">{{s.status}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5A6169">Gestor(a)</span>
+<span style="{{s.gestorStyle}}">{{s.gestor}}</span>
+</div>
+<span style="font-size: 13px; color: #3D434A">{{s.meta}}</span>
+<div style="display: flex; gap: 16px; margin-top: auto; padding-top: 8px; border-top: 1px solid #ECECE8">
+<a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0">{{s.primary}}</a>
+<a href="#" style="font-size: 13px; color: #5A6169; padding: 6px 0">Desativar</a>
+</div>
+</article>
+</sc-for>
+</div>
+<section aria-labelledby="pol-titulo" style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 12px">
+<h2 id="pol-titulo" style="margin: 0; padding: 16px 20px; font-size: 16px; font-weight: 600">Políticas da empresa</h2>
+<sc-for list="{{policies}}" as="p" hint-placeholder-count="4">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid #ECECE8">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-size: 14px; font-weight: 500">{{p.title}}</span><span style="font-size: 13px; color: #5A6169">{{p.desc}}</span></div>
+<span style="{{p.valueStyle}}">{{p.value}}</span>
+</div>
+</sc-for>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; align-items: center; min-height: 40px; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font-size: 14px; text-decoration: none;';
+    const items = [['Setores e gestores', 'Admin.dc.html'], ['Auditores', '#'], ['Políticas e segurança', '#'], ['Plano e cobrança', '#'], ['Voltar ao meu setor', 'Main.dc.html']];
+    const nav = items.map((it, i) => ({ label: it[0], href: it[1], style: i === 0 ? base + ' background: #E3F0EE; color: #0B5A53; font-weight: 600;' : base + ' color: #3D434A;' }));
+    const chip = (bg, fg) => 'display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: ' + bg + '; color: ' + fg + ';';
+    const card = 'background: #FFFFFF; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-height: 196px; box-sizing: border-box;';
+    const data = [
+      ['Controladoria', 'Mariana Costa', '5 usuários · 3 modelos', true],
+      ['Fiscal', 'Henrique Rocha', '4 usuários · 2 modelos', true],
+      ['Compras', 'Paulo Teixeira', '7 usuários · 1 modelo', true],
+      ['Marketing', 'Fernanda Luz', '3 usuários · 1 modelo', true],
+      ['RH', 'Cláudia Nunes', '2 usuários · 2 modelos', true],
+      ['Logística', 'Sem gestor nomeado', 'Nomeie um gestor para o setor começar a receber pedidos', false]
+    ];
+    const sectors = data.map((d) => ({ name: d[0], gestor: d[1], meta: d[2], status: d[3] ? 'Ativo' : 'Pendente', primary: d[3] ? 'Trocar gestor' : 'Nomear gestor', chipStyle: d[3] ? chip('#E3F0EE', '#0B5A53') : chip('#FCEFD9', '#8A4B00'), gestorStyle: d[3] ? 'font-size: 14px; font-weight: 600;' : 'font-size: 14px; font-weight: 600; color: #8A4B00;', cardStyle: d[3] ? card + ' border: 1px solid #E2E2DC;' : card + ' border: 1px dashed #C9A15E;' }));
+    const on = chip('#E3F0EE', '#0B5A53');
+    const off = chip('#ECECE8', '#3D434A');
+    const policies = [
+      ['MFA obrigatório', 'Todos os usuários confirmam o login com código do aplicativo', 'Ligado', on],
+      ['Login Microsoft (Entra ID)', 'Entrar com a conta do Microsoft 365 da empresa', 'Disponível na Fase 2', off],
+      ['Retenção de dados', 'Prazo de guarda de solicitações, anexos e trilha', '5 anos', off],
+      ['Auditores (somente leitura)', 'auditoria.externa@escritorio.com.br', '1 auditor', off]
+    ].map((p) => ({ title: p[0], desc: p[1], value: p[2], valueStyle: p[3] }));
+    return { nav, sectors, policies };
+  }
+}
+</script>
+</body>
+</html>
