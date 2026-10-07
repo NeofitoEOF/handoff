@@ -8,6 +8,9 @@ SaaS multi-tenant que substitui o Excel na **troca de informações entre setore
 
 ## Status
 
+Acompanhe o andamento técnico em [`docs/implementacao.md`](docs/implementacao.md), que funciona como checklist vivo do que já foi implementado e do que ainda falta.
+
+
 Fase de concepção: requisitos, análise crítica e mockup das telas. Ainda não há código da aplicação. O próximo passo é validar a dor com 5–10 controllers ou gerentes fiscais e escolher o fluxo piloto.
 
 ## Documentos
