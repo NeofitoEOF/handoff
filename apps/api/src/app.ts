@@ -134,6 +134,9 @@ export async function buildApp() {
           "message" in error && typeof (error as { message?: unknown }).message === "string"
             ? (error as { message: string }).message
             : "Erro na requisição.";
+        if (statusCode === 429 && "retryAfter" in error && typeof error.retryAfter === "number") {
+          reply.header("Retry-After", error.retryAfter);
+        }
         return reply.code(statusCode).send({ message });
       }
     }

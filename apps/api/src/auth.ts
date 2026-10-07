@@ -1,3 +1,4 @@
+import { enforceTenantRateLimit } from "./tenant-rate-limit.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import fastifyJwt from "@fastify/jwt";
 import { config } from "./config.js";
@@ -22,6 +23,7 @@ export async function registerAuth(app: FastifyInstance): Promise<void> {
 
   app.decorate("authenticate", async function authenticate(request: FastifyRequest) {
     await request.jwtVerify();
+    await enforceTenantRateLimit(request.user.tenantId);
   });
 }
 

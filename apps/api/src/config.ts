@@ -7,6 +7,7 @@ const envBoolean = z
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
+  TENANT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000000).default(1000),
   TRUST_PROXY: envBoolean.default(false),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32),

@@ -1,3 +1,4 @@
+import { enforceTenantRateLimit } from "../../tenant-rate-limit.js";
 import crypto from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { withTenantTransaction, type DbClient } from "../../db.js";
@@ -124,7 +125,7 @@ export async function authenticatePublicApiRequest(
   const tenantId = parseTokenTenantId(token);
   if (!tenantId) return { kind: "unauthorized" as const };
 
-  return withTenantTransaction(tenantId, async (client) => {
+  const auth = await withTenantTransaction(tenantId, async (client) => {
     const result = await client.query<{
       id: string;
       scopes: string[];
@@ -151,6 +152,8 @@ export async function authenticatePublicApiRequest(
 
     return { kind: "ok" as const, tenantId, apiKeyId: key.id, scopes: key.scopes };
   });
+  if (auth.kind === "ok") await enforceTenantRateLimit(auth.tenantId);
+  return auth;
 }
 
 function validateWebhookUrl(value: string): boolean {

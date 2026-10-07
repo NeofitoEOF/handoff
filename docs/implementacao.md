@@ -410,5 +410,14 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Uso de armazenamento filtrado explicitamente por tenant, além do RLS
 - ✅ Tamanho de entrada validado como inteiro seguro não negativo; testes de limite exato e excesso
 - ⏳ Quota de solicitações/mês: definir os valores comerciais por plano antes de aplicar em criação, campanhas, recorrências e retificações
-- ⏳ Rate limit agregado por tenant para todas as instâncias da API
+- ✅ Rate limit agregado por tenant para todas as instâncias da API (JWT, API key e convidado)
 - ⏳ Enterprise: definir armazenamento contratual (o código atual considera ilimitado)
+
+## Rate limit compartilhado por empresa
+
+- ✅ Contador PostgreSQL atômico por tenant, compartilhado entre réplicas e credenciais
+- ✅ Aplicado após autenticação JWT, API key e sessão de convidado
+- ✅ Configuração `TENANT_RATE_LIMIT_PER_MINUTE` (padrão operacional: 1000/minuto)
+- ✅ Resposta 429 com Retry-After; contador limitado e uma linha por empresa
+- ✅ Testes PostgreSQL de concorrência, renovação da janela e isolamento RLS
+- ✅ Limites locais por IP/login/OTP preservados como proteção adicional

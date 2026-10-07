@@ -1,3 +1,4 @@
+import { enforceTenantRateLimit } from "../../tenant-rate-limit.js";
 import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager } from "../../authorization.js";
@@ -298,5 +299,6 @@ export async function withGuestSession<T>(
   });
 
   if (!context) return { kind: "invalid_session" };
+  await enforceTenantRateLimit(context.tenantId);
   return fn(context);
 }
