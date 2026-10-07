@@ -46,6 +46,7 @@ function validateValue(field: XlsxTemplateField, value: unknown): string | null 
 export async function validateXlsxBuffer(
   buffer: Buffer,
   schema: { fields: XlsxTemplateField[] },
+  columnMapping: Record<string, string> = {},
 ) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as any);
@@ -68,7 +69,11 @@ export async function validateXlsxBuffer(
     let valid = true;
 
     for (const field of schema.fields) {
-      const column = headers.get(field.key) ?? headers.get(field.label);
+      const mappedHeader = columnMapping[field.key];
+      const column =
+        (mappedHeader ? headers.get(mappedHeader) : undefined) ??
+        headers.get(field.key) ??
+        headers.get(field.label);
       const value = column ? normalizeCell(row.getCell(column).value) : null;
       const error = validateValue(field, value);
       if (error) {
