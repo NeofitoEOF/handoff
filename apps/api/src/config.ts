@@ -12,6 +12,7 @@ const envSchema = z.object({
   OBJECT_STORAGE_SECRET_KEY: z.string().min(1),
   OBJECT_STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
   MFA_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
+  PLATFORM_ADMIN_KEY: z.string().min(32),
 });
 
 export const config = envSchema.parse(process.env);
