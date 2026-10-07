@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const envBoolean = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true");
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -14,6 +18,10 @@ const envSchema = z.object({
   MFA_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
   PLATFORM_ADMIN_KEY: z.string().min(32),
   APP_BASE_URL: z.string().url().default("http://localhost:5173"),
+  CLAMAV_ENABLED: envBoolean.default("true"),
+  CLAMAV_HOST: z.string().default("localhost"),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
 });
 
 export const config = envSchema.parse(process.env);
