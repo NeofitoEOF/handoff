@@ -214,3 +214,17 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Estratégia de rollback por tags/SHA imutáveis sem rollback destrutivo de migration
 - ✅ RPO/RTO documentados: 15 min / 4 h
 - 🟡 PITR e backup gerenciado de produção — procedimento definido; habilitação depende do PostgreSQL gerenciado/conta OCI
+
+
+## Segurança de pipeline e cluster
+
+- ✅ Dependabot semanal para npm, GitHub Actions e Dockerfiles
+- ✅ CodeQL JavaScript/TypeScript em PR/main e agenda semanal
+- ✅ Trivy filesystem para vulnerabilidades HIGH/CRITICAL com SARIF
+- ✅ Security workflow validado com sucesso
+- ✅ PodDisruptionBudget para API e frontend
+- ✅ NetworkPolicy default-deny de entrada para pods do Handoff
+- ✅ Entrada API/web limitada ao ingress controller no chart
+- ✅ Containers non-root, root filesystem read-only e capabilities removidas
+- ✅ Checklist de segurança documentado
+- 🟡 WAF, rotação via OCI Vault e DAST em staging dependem do ambiente cloud/staging
