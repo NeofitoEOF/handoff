@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 
 type Sector = { id: string; name: string; active: boolean };
@@ -126,7 +127,9 @@ export function TemplatesPage() {
               {templates.data.data.map((template) => (
                 <tr key={template.id}>
                   <td>
-                    <strong>{template.name}</strong>
+                    <Link className="text-link" to={`/templates/${template.id}`}>
+                      <strong>{template.name}</strong>
+                    </Link>
                     {template.description && <div className="small muted">{template.description}</div>}
                   </td>
                   <td>{template.published_version ?? "Rascunho"}</td>
