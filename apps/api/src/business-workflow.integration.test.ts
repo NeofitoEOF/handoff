@@ -73,8 +73,11 @@ suite("business workflow acceptance", () => {
          ('assignee-b-' || substr(gen_random_uuid()::text, 1, 8) || '@example.test', 'Assignee B')
        RETURNING id, email`,
     );
-    [creatorId, originApproverId, destinationManagerId, assigneeAId, assigneeBId] =
-      users.rows.map((row) => row.id);
+    creatorId = users.rows[0]!.id;
+    originApproverId = users.rows[1]!.id;
+    destinationManagerId = users.rows[2]!.id;
+    assigneeAId = users.rows[3]!.id;
+    assigneeBId = users.rows[4]!.id;
 
     await admin.query(
       `INSERT INTO tenant_users (tenant_id, user_id, role)
