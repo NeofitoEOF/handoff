@@ -1,0 +1,199 @@
+import { config } from "../../config.js";
+import { pool, withTenantTransaction } from "../../db.js";
+import { isTenantAdmin } from "../../authorization.js";
+
+export type BillingPlan = "STARTER" | "BUSINESS" | "ENTERPRISE";
+export type BillingStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
+
+export const PLAN_ENTITLEMENTS: Record<
+  BillingPlan,
+  {
+    maxSectors: number | null;
+    storageBytes: number | null;
+  }
+> = {
+  STARTER: {
+    maxSectors: 2,
+    storageBytes: 10 * 1024 ** 3,
+  },
+  BUSINESS: {
+    maxSectors: 10,
+    storageBytes: 100 * 1024 ** 3,
+  },
+  ENTERPRISE: {
+    maxSectors: null,
+    storageBytes: null,
+  },
+};
+
+export async function getTenantPlan(
+  client: import("../../db.js").DbClient,
+  tenantId: string,
+) {
+  const result = await client.query<{
+    plan: BillingPlan;
+    status: BillingStatus;
+    monthly_price_per_sector_cents: number;
+    currency: string;
+  }>(
+    `SELECT plan, status, monthly_price_per_sector_cents, currency
+       FROM billing_profiles
+      WHERE tenant_id = $1
+      LIMIT 1`,
+    [tenantId],
+  );
+
+  return (
+    result.rows[0] ?? {
+      plan: "STARTER" as const,
+      status: "TRIAL" as const,
+      monthly_price_per_sector_cents: 0,
+      currency: "BRL",
+    }
+  );
+}
+
+export async function canEnableAnotherSector(
+  client: import("../../db.js").DbClient,
+  tenantId: string,
+) {
+  const profile = await getTenantPlan(client, tenantId);
+  if (["SUSPENDED", "CANCELLED"].includes(profile.status)) {
+    return {
+      allowed: false as const,
+      reason: "billing_inactive" as const,
+      profile,
+    };
+  }
+
+  const entitlement = PLAN_ENTITLEMENTS[profile.plan];
+  if (entitlement.maxSectors === null) {
+    return { allowed: true as const, profile };
+  }
+
+  const count = await client.query<{ count: string }>(
+    `SELECT count(*)::text AS count
+       FROM sectors
+      WHERE tenant_id = $1 AND active = true`,
+    [tenantId],
+  );
+  const activeSectors = Number(count.rows[0]?.count ?? 0);
+
+  return activeSectors >= entitlement.maxSectors
+    ? {
+        allowed: false as const,
+        reason: "sector_limit" as const,
+        activeSectors,
+        limit: entitlement.maxSectors,
+        profile,
+      }
+    : { allowed: true as const, profile, activeSectors };
+}
+
+export async function getBillingSummary(input: {
+  tenantId: string;
+  actorUserId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await isTenantAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const profile = await getTenantPlan(client, input.tenantId);
+    const entitlement = PLAN_ENTITLEMENTS[profile.plan];
+
+    const sectorCount = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM sectors WHERE active = true`,
+    );
+    const requestCount = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM requests
+        WHERE created_at >= date_trunc('month', now())`,
+    );
+    const storage = await client.query<{ bytes: string }>(
+      `SELECT
+          COALESCE((SELECT sum(size_bytes) FROM attachments), 0) +
+          COALESCE((SELECT sum(size_bytes) FROM imports), 0) AS bytes`,
+    );
+
+    const enabledSectors = Number(sectorCount.rows[0]?.count ?? 0);
+    const requestsThisMonth = Number(requestCount.rows[0]?.count ?? 0);
+    const storageBytes = Number(storage.rows[0]?.bytes ?? 0);
+    const billableAmountCents =
+      enabledSectors * profile.monthly_price_per_sector_cents;
+
+    return {
+      kind: "ok" as const,
+      summary: {
+        profile,
+        entitlements: entitlement,
+        usage: {
+          enabledSectors,
+          requestsThisMonth,
+          storageBytes,
+        },
+        estimatedMonthlyAmountCents: billableAmountCents,
+      },
+    };
+  });
+}
+
+export async function updateBillingProfile(input: {
+  platformAdminKey: string | undefined;
+  tenantId: string;
+  plan: BillingPlan;
+  status: BillingStatus;
+  monthlyPricePerSectorCents: number;
+  currency: string;
+  provider?: string | null;
+  externalCustomerId?: string | null;
+  externalSubscriptionId?: string | null;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+}) {
+  if (!input.platformAdminKey || input.platformAdminKey !== config.PLATFORM_ADMIN_KEY) {
+    return { kind: "forbidden" as const };
+  }
+
+  const tenant = await pool.query(
+    `SELECT 1 FROM tenants WHERE id = $1 LIMIT 1`,
+    [input.tenantId],
+  );
+  if (tenant.rowCount !== 1) return { kind: "tenant_not_found" as const };
+
+  const result = await pool.query(
+    `INSERT INTO billing_profiles
+      (tenant_id, plan, status, monthly_price_per_sector_cents, currency,
+       provider, external_customer_id, external_subscription_id,
+       current_period_start, current_period_end, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now())
+     ON CONFLICT (tenant_id)
+     DO UPDATE SET
+       plan = EXCLUDED.plan,
+       status = EXCLUDED.status,
+       monthly_price_per_sector_cents = EXCLUDED.monthly_price_per_sector_cents,
+       currency = EXCLUDED.currency,
+       provider = EXCLUDED.provider,
+       external_customer_id = EXCLUDED.external_customer_id,
+       external_subscription_id = EXCLUDED.external_subscription_id,
+       current_period_start = EXCLUDED.current_period_start,
+       current_period_end = EXCLUDED.current_period_end,
+       updated_at = now()
+     RETURNING tenant_id, plan, status, monthly_price_per_sector_cents, currency,
+               provider, current_period_start, current_period_end`,
+    [
+      input.tenantId,
+      input.plan,
+      input.status,
+      input.monthlyPricePerSectorCents,
+      input.currency,
+      input.provider ?? null,
+      input.externalCustomerId ?? null,
+      input.externalSubscriptionId ?? null,
+      input.currentPeriodStart ?? null,
+      input.currentPeriodEnd ?? null,
+    ],
+  );
+
+  return { kind: "updated" as const, profile: result.rows[0] };
+}
