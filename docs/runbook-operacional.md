@@ -38,11 +38,11 @@ primário de recuperação.
 
 ```bash
 export DATABASE_URL='postgres://...'
-./scripts/backup-postgres.sh backup.dump
+sh scripts/backup-postgres.sh backup.dump
 
 # em banco de recuperação vazio
 export DATABASE_URL='postgres://.../handoff_restore'
-./scripts/restore-postgres.sh backup.dump
+sh scripts/restore-postgres.sh backup.dump
 ```
 
 Nunca execute o script de restore diretamente sobre produção sem janela e
