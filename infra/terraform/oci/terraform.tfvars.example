@@ -1,0 +1,20 @@
+region         = "sa-saopaulo-1"
+tenancy_id     = "ocid1.tenancy.oc1..."
+compartment_id = "ocid1.compartment.oc1..."
+environment    = "production"
+
+postgres_subnet_id = "ocid1.subnet.oc1..."
+
+postgres_db_version          = "17"
+postgres_system_type         = "OCI_NATIVE"
+postgres_storage_system_type = "OCI_OPTIMIZED_STORAGE"
+
+oke_worker_pools = {
+  handoff = {
+    mode = "node-pool"
+    size = 2
+  }
+}
+
+# Never commit the password.
+# export TF_VAR_postgres_admin_password='...'
