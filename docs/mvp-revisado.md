@@ -103,6 +103,25 @@ flowchart LR
 
 A devolução pode acontecer quantas vezes for preciso, sempre com comentário preso ao item; cada passagem de mão fica na trilha de auditoria. O convidado por link entra no passo Preenche quando o setor repassa a solicitação.
 
+## Regras operacionais fechadas
+
+A revisão de ferramentas de workflow e aprovação mostrou que boa parte da fricção não está em criar o formulário, mas no que acontece **depois**: responsável sai de férias, aprovação fica pendente, o pedido volta para correção, alguém precisa cancelar, vários setores recebem o mesmo pedido ou aparece um erro depois do fechamento. O MVP passa a tratar esses casos explicitamente.
+
+- **O setor, não a pessoa, responde pelo SLA.** Trocar o responsável não reinicia prazo nem apaga o rascunho.
+- **Devolução cria prazo de correção sem apagar o prazo original.** Assim o painel consegue separar atraso inicial de retrabalho.
+- **Aprovação é por item.** Uma planilha com 500 linhas pode ter 490 aprovadas e 10 devolvidas; as 490 ficam bloqueadas e somente as 10 voltam para edição.
+- **Fechamento nunca é reaberto.** Erro descoberto depois gera uma Retificação vinculada ao fechamento anterior.
+- **Cancelamento exige motivo e deixa histórico.** Só o setor que abriu o pedido pode cancelar antes do fechamento.
+- **Mais de um gestor por setor.** Férias, desligamento ou ausência de uma pessoa não podem travar a operação.
+- **Competência evita duplicidade.** Fluxos mensais/semanais podem usar uma chave de competência e impedir duas solicitações acidentais para o mesmo modelo, setor e período.
+- **Coleta agrupa vários setores.** Controladoria pode abrir “Fechamento 10/2026” uma vez e acompanhar solicitações-filhas de Compras, RH, Comercial etc. sem transformar tudo em uma única aprovação.
+- **Recorrência cria novas ocorrências.** Nunca se reaproveita a solicitação do mês anterior.
+- **Convidado é participante da solicitação, não membro do setor.** A política da empresa decide se terceiros externos podem responder.
+- **Solicitações vencidas não desaparecem nem renovam o prazo automaticamente.** Entram em atraso e escalam para o Gestor.
+- **Autoria e aprovação são responsabilidades separadas.** O fechamento registra quem informou, quem alterou, quem submeteu e quem aprovou.
+
+O detalhamento normativo dessas regras está em [Requisitos técnicos](requisitos-tecnicos.md), seção **Regras operacionais do fluxo**.
+
 ## Parecido com o Excel, mas não igual
 
 O produto aproveita o que as pessoas já sabem fazer no Excel. A liberdade total fica de fora, porque é justamente ela que gera erro e falta de controle.
