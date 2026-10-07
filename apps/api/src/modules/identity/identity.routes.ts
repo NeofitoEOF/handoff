@@ -47,7 +47,7 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
     const refresh = await createRefreshSession({
       tenantId: body.tenantId,
       userId: auth.user.id,
-      userAgent: request.headers["user-agent"],
+      ...(request.headers["user-agent"] ? { userAgent: request.headers["user-agent"] } : {}),
       ip: request.ip,
     });
 
