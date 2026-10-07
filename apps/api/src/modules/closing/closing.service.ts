@@ -62,7 +62,7 @@ export async function closeRequest(input: {
          FROM request_items ri
          LEFT JOIN guest_links gl ON gl.id = ri.submitted_guest_link_id
         WHERE ri.request_id = $1
-        ORDER BY created_at, item_key`,
+        ORDER BY ri.created_at, ri.item_key`,
       [input.requestId],
     );
 
