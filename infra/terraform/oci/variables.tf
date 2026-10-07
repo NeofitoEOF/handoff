@@ -21,7 +21,7 @@ variable "environment" {
 variable "oke_worker_pools" {
   type        = any
   description = "Worker pools passed to the official OKE module."
-  default = {
+  default     = {
     handoff = {
       mode = "node-pool"
       size = 2
