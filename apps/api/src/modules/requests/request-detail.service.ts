@@ -1,4 +1,5 @@
 import { withTenantTransaction } from "../../db.js";
+import { calculateColumnTotals } from "../templates/calculations.js";
 
 export async function getRequestDetail(input: {
   tenantId: string;
@@ -77,9 +78,26 @@ export async function getRequestDetail(input: {
     const reviewableStatuses = ["IN_REVIEW"];
     const terminal = ["CLOSED", "CANCELLED"];
 
+    const itemRows = await client.query<{ data: Record<string, unknown> }>(
+      `SELECT data FROM request_items WHERE request_id = $1 ORDER BY created_at, item_key`,
+      [input.requestId],
+    );
+    const schemaFields =
+      request.schema_json &&
+      typeof request.schema_json === "object" &&
+      "fields" in (request.schema_json as Record<string, unknown>) &&
+      Array.isArray((request.schema_json as { fields?: unknown }).fields)
+        ? ((request.schema_json as { fields: Array<{ key: string; calculation?: unknown }> }).fields)
+        : [];
+    const computedTotals = calculateColumnTotals(
+      itemRows.rows.map((row) => row.data),
+      schemaFields as any,
+    );
+
     return {
       kind: "ok" as const,
       request,
+      computedTotals,
       permissions: {
         canRead: true,
         canEdit:
