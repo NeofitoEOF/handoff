@@ -61,6 +61,13 @@ export async function getRequestTimeline(input: {
                WHERE i.id = ae.entity_id AND i.request_id = $1
             )
           )
+          OR (
+            ae.entity_type = 'comment'
+            AND EXISTS (
+              SELECT 1 FROM comments c
+               WHERE c.id = ae.entity_id AND c.request_id = $1
+            )
+          )
         ORDER BY ae.created_at ASC, ae.id ASC`,
       [input.requestId],
     );
