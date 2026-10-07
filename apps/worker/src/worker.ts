@@ -2,6 +2,7 @@ import pg from "pg";
 import nodemailer from "nodemailer";
 import { config } from "./config.js";
 import { generatePdf, renderClosureHtml, storePdf } from "./pdf.js";
+import { decryptTeamsWebhook, sendTeamsWebhook } from "./teams.js";
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: config.DATABASE_URL, max: 5 });
@@ -255,6 +256,90 @@ async function processClosureDocuments(tenantId: string) {
   }
 }
 
+async function processTeamsOutbox(tenantId: string) {
+  const claimed = await withTenant(tenantId, async (client) => {
+    const result = await client.query<{
+      id: string;
+      request_id: string | null;
+      title: string;
+      message: string;
+      attempts: number;
+      teams_webhook_ciphertext: string;
+      teams_webhook_iv: string;
+      teams_webhook_tag: string;
+    }>(
+      `SELECT o.id, o.request_id, o.title, o.message, o.attempts,
+              i.teams_webhook_ciphertext,
+              i.teams_webhook_iv,
+              i.teams_webhook_tag
+         FROM teams_outbox o
+         JOIN tenant_microsoft_integrations i ON i.tenant_id = o.tenant_id
+        WHERE o.status IN ('PENDING', 'FAILED')
+          AND o.available_at <= now()
+          AND o.attempts < 5
+          AND i.enabled = true
+          AND i.teams_webhook_ciphertext IS NOT NULL
+          AND i.teams_webhook_iv IS NOT NULL
+          AND i.teams_webhook_tag IS NOT NULL
+        ORDER BY o.created_at
+        LIMIT 20
+        FOR UPDATE OF o SKIP LOCKED`,
+    );
+
+    if (result.rows.length) {
+      await client.query(
+        `UPDATE teams_outbox
+            SET status = 'PROCESSING'
+          WHERE id = ANY($1::uuid[])`,
+        [result.rows.map((row) => row.id)],
+      );
+    }
+
+    return result.rows;
+  });
+
+  for (const event of claimed) {
+    try {
+      const webhookUrl = decryptTeamsWebhook({
+        ciphertext: event.teams_webhook_ciphertext,
+        iv: event.teams_webhook_iv,
+        tag: event.teams_webhook_tag,
+      });
+
+      await sendTeamsWebhook(webhookUrl, {
+        title: event.title,
+        message: event.message,
+        requestId: event.request_id,
+      });
+
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE teams_outbox
+              SET status = 'SENT',
+                  sent_at = now(),
+                  attempts = attempts + 1,
+                  last_error = NULL
+            WHERE id = $1`,
+          [event.id],
+        );
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE teams_outbox
+              SET status = 'FAILED',
+                  attempts = attempts + 1,
+                  last_error = $2,
+                  available_at = now() + make_interval(mins => LEAST(60, (attempts + 1) * 5))
+            WHERE id = $1`,
+          [event.id, message.slice(0, 2000)],
+        );
+      });
+    }
+  }
+}
+
 async function enqueueReminders(tenantId: string) {
   await withTenant(tenantId, async (client) => {
     const rows = await client.query<{
@@ -443,6 +528,7 @@ async function tick() {
   for (const tenant of tenants.rows) {
     await materializeRecurrences(tenant.id);
     await processClosureDocuments(tenant.id);
+    await processTeamsOutbox(tenant.id);
     await enqueueReminders(tenant.id);
     await processOutbox(tenant.id);
   }
