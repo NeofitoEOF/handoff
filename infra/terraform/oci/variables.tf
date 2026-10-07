@@ -3,6 +3,11 @@ variable "region" {
   description = "OCI region, e.g. sa-saopaulo-1."
 }
 
+variable "home_region" {
+  type        = string
+  description = "OCI tenancy home region used for IAM operations."
+}
+
 variable "tenancy_id" {
   type        = string
   description = "OCI tenancy OCID."
