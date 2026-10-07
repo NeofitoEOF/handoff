@@ -165,7 +165,7 @@ export async function verifyTenantAuditChain(input: {
             'hex'
           ) AS calculated_hash
         FROM audit_events
-       ORDER BY chain_seq ASC`,
+       ORDER BY audit_events.chain_seq ASC`,
     );
 
     let previousHash: string | null = null;
