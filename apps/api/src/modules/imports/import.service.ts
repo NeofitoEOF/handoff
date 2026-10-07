@@ -138,33 +138,21 @@ export async function importXlsx(input: {
     const importResult = await client.query<{ id: string }>(
       `INSERT INTO imports
         (tenant_id, request_id, uploaded_by, filename, storage_key, sha256, status,
-         total_rows, accepted_rows, rejected_rows, errors, completed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'COMPLETED', $7, $8, $9, $10::jsonb, now())
+         total_rows, accepted_rows, rejected_rows, errors, staged_items, completed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'VALIDATED', $7, $8, $9, $10::jsonb, $11::jsonb, now())
        RETURNING id`,
       [
         input.tenantId, input.requestId, input.actorUserId, input.filename,
         storageKey, sha256, Math.max(worksheet.rowCount - 1, 0),
-        accepted.length, new Set(errors.map((x) => x.row)).size, JSON.stringify(errors),
+        accepted.length, new Set(errors.map((x) => x.row)).size,
+        JSON.stringify(errors), JSON.stringify(accepted),
       ],
     );
-
-    for (const item of accepted) {
-      await client.query(
-        `INSERT INTO request_items
-          (tenant_id, request_id, item_key, data, status, last_edited_by)
-         VALUES ($1, $2, $3, $4::jsonb, 'DRAFT', $5)
-         ON CONFLICT (tenant_id, request_id, item_key)
-         DO UPDATE SET data = EXCLUDED.data, last_edited_by = EXCLUDED.last_edited_by,
-                       updated_at = now()
-         WHERE request_items.status IN ('DRAFT', 'RETURNED')`,
-        [input.tenantId, input.requestId, item.itemKey, JSON.stringify(item.data), input.actorUserId],
-      );
-    }
 
     await client.query(
       `INSERT INTO audit_events
         (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
-       VALUES ($1, $2, 'XLSX_IMPORTED', 'import', $3, $4::jsonb)`,
+       VALUES ($1, $2, 'XLSX_VALIDATED', 'import', $3, $4::jsonb)`,
       [
         input.tenantId, input.actorUserId, importResult.rows[0]!.id,
         JSON.stringify({ sha256, acceptedRows: accepted.length, errorCount: errors.length }),
@@ -172,12 +160,70 @@ export async function importXlsx(input: {
     );
 
     return {
-      kind: "completed" as const,
+      kind: "validated" as const,
       importId: importResult.rows[0]!.id,
       sha256,
       acceptedRows: accepted.length,
       rejectedRows: new Set(errors.map((x) => x.row)).size,
       errors,
     };
+  });
+}
+
+export async function confirmXlsxImport(input: {
+  tenantId: string;
+  requestId: string;
+  importId: string;
+  actorUserId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const importResult = await client.query<{
+      id: string;
+      status: string;
+      uploaded_by: string;
+      staged_items: Array<{ itemKey: string; data: Record<string, unknown> }>;
+    }>(
+      `SELECT id, status, uploaded_by, staged_items
+         FROM imports
+        WHERE id = $1 AND request_id = $2
+        FOR UPDATE`,
+      [input.importId, input.requestId],
+    );
+
+    const current = importResult.rows[0];
+    if (!current) return { kind: "not_found" as const };
+    if (current.status === "CONFIRMED") return { kind: "already_confirmed" as const };
+    if (current.status !== "VALIDATED") return { kind: "invalid_state" as const, status: current.status };
+    if (current.uploaded_by !== input.actorUserId) return { kind: "forbidden" as const };
+
+    for (const item of current.staged_items) {
+      await client.query(
+        `INSERT INTO request_items
+          (tenant_id, request_id, item_key, data, status, last_edited_by)
+         VALUES ($1, $2, $3, $4::jsonb, 'DRAFT', $5)
+         ON CONFLICT (tenant_id, request_id, item_key)
+         DO UPDATE SET data = EXCLUDED.data, last_edited_by = EXCLUDED.last_edited_by,
+                       status = CASE WHEN request_items.status = 'RETURNED' THEN 'DRAFT' ELSE request_items.status END,
+                       updated_at = now()
+         WHERE request_items.status IN ('DRAFT', 'RETURNED')`,
+        [input.tenantId, input.requestId, item.itemKey, JSON.stringify(item.data), input.actorUserId],
+      );
+    }
+
+    await client.query(
+      `UPDATE imports
+          SET status = 'CONFIRMED', staged_items = '[]'::jsonb, completed_at = now()
+        WHERE id = $1`,
+      [input.importId],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, 'XLSX_IMPORT_CONFIRMED', 'import', $3, $4::jsonb)`,
+      [input.tenantId, input.actorUserId, input.importId, JSON.stringify({ requestId: input.requestId })],
+    );
+
+    return { kind: "confirmed" as const, importedRows: current.staged_items.length };
   });
 }
