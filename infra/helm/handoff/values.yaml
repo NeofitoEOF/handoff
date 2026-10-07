@@ -4,14 +4,17 @@ images:
   api:
     repository: ghcr.io/neofitoeof/handoff-api
     tag: latest
+    digest: ""
     pullPolicy: IfNotPresent
   web:
     repository: ghcr.io/neofitoeof/handoff-web
     tag: latest
+    digest: ""
     pullPolicy: IfNotPresent
   worker:
     repository: ghcr.io/neofitoeof/handoff-worker
     tag: latest
+    digest: ""
     pullPolicy: IfNotPresent
 
 replicas:
