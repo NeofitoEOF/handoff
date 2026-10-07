@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { isActiveSectorMember } from "../../authorization.js";
+import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
 
 export async function createRequest(input: {
   tenantId: string;
@@ -97,6 +98,36 @@ export async function createRequest(input: {
     );
 
     const created = result.rows[0];
+
+    const managers = await client.query<{ user_id: string; email: string; name: string }>(
+      `SELECT m.user_id, u.email, u.name
+         FROM memberships m
+         JOIN users u ON u.id = m.user_id
+        WHERE m.sector_id = $1
+          AND m.role = 'MANAGER'
+          AND m.active = true
+          AND u.active = true`,
+      [input.destinationSectorId],
+    );
+
+    for (const manager of managers.rows) {
+      await enqueueEmail(client, {
+        tenantId: input.tenantId,
+        requestId: created.id,
+        recipientEmail: manager.email,
+        subject: `[Handoff] Nova solicitação: ${input.title}`,
+        bodyText: `Uma nova solicitação foi enviada ao seu setor com prazo em ${input.dueAt.toISOString()}.`,
+        dedupeKey: `request:${created.id}:opened:${manager.user_id}`,
+      });
+      await createInAppNotification(client, {
+        tenantId: input.tenantId,
+        userId: manager.user_id,
+        requestId: created.id,
+        type: "REQUEST_OPENED",
+        title: "Nova solicitação",
+        message: input.title,
+      });
+    }
 
     await client.query(
       `INSERT INTO audit_events
