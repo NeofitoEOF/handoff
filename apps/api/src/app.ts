@@ -22,6 +22,7 @@ import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { campaignRoutes } from "./modules/campaigns/campaign.routes.js";
 import { tenantRoutes } from "./modules/tenancy/tenant.routes.js";
 import { guestRoutes } from "./modules/guest/guest.routes.js";
+import { notificationRoutes } from "./modules/notifications/notification.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -49,6 +50,7 @@ export async function buildApp() {
   await app.register(campaignRoutes);
   await app.register(tenantRoutes);
   await app.register(guestRoutes);
+  await app.register(notificationRoutes);
   await app.register(sectorRoutes);
   await app.register(requestCreateRoutes);
   await app.register(requestAssignmentRoutes);
