@@ -102,7 +102,7 @@ export async function getRequestDetail(input: {
           !["APPROVED", "CLOSED", "CANCELLED"].includes(request.status),
         canCancel:
           !!originRole &&
-          ["MANAGER", "APPROVER", "MEMBER"].includes(originRole) &&
+          (request.created_by === input.actorUserId || ["MANAGER", "APPROVER"].includes(originRole)) &&
           !terminal.includes(request.status),
         canClose:
           !!originRole &&
