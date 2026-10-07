@@ -115,3 +115,112 @@ export async function addSectorMember(input: {
     return { kind: "saved" as const, membership: result.rows[0] };
   });
 }
+
+
+export async function deactivateSectorMember(input: {
+  tenantId: string;
+  actorUserId: string;
+  sectorId: string;
+  userId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const membershipResult = await client.query<{
+      id: string;
+      role: MembershipRole;
+      active: boolean;
+    }>(
+      `SELECT id, role, active
+         FROM memberships
+        WHERE sector_id = $1
+          AND user_id = $2
+        FOR UPDATE`,
+      [input.sectorId, input.userId],
+    );
+
+    const membership = membershipResult.rows[0];
+    if (!membership) return { kind: "not_found" as const };
+    if (!membership.active) return { kind: "already_inactive" as const };
+
+    const actorIsAdmin = await isTenantAdmin(client, input.tenantId, input.actorUserId);
+    const actorIsManager = await isSectorManager(client, input.sectorId, input.actorUserId);
+
+    if (!actorIsAdmin && !actorIsManager) {
+      return { kind: "forbidden" as const };
+    }
+
+    if (membership.role === "MANAGER") {
+      if (!actorIsAdmin) {
+        return { kind: "cannot_remove_manager" as const };
+      }
+
+      const managerCount = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count
+           FROM memberships
+          WHERE sector_id = $1
+            AND role = 'MANAGER'
+            AND active = true`,
+        [input.sectorId],
+      );
+
+      if (Number(managerCount.rows[0]?.count ?? 0) <= 1) {
+        return { kind: "last_manager" as const };
+      }
+    }
+
+    await client.query(
+      `UPDATE memberships
+          SET active = false
+        WHERE id = $1`,
+      [membership.id],
+    );
+
+    const pendingRequests = await client.query<{ id: string; status: string }>(
+      `UPDATE requests
+          SET assigned_to = NULL,
+              status = 'WAITING_REASSIGNMENT',
+              updated_at = now()
+        WHERE destination_sector_id = $1
+          AND assigned_to = $2
+          AND status IN ('OPEN', 'IN_PROGRESS', 'IN_CORRECTION')
+       RETURNING id, status`,
+      [input.sectorId, input.userId],
+    );
+
+    for (const request of pendingRequests.rows) {
+      await client.query(
+        `INSERT INTO audit_events
+          (tenant_id, actor_user_id, action, entity_type, entity_id, before_data, after_data)
+         VALUES ($1, $2, 'REQUEST_WAITING_REASSIGNMENT', 'request', $3, $4::jsonb, $5::jsonb)`,
+        [
+          input.tenantId,
+          input.actorUserId,
+          request.id,
+          JSON.stringify({ assignedTo: input.userId }),
+          JSON.stringify({
+            assignedTo: null,
+            status: "WAITING_REASSIGNMENT",
+            reason: "MEMBER_DEACTIVATED",
+          }),
+        ],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, before_data, after_data)
+       VALUES ($1, $2, 'SECTOR_MEMBER_DEACTIVATED', 'membership', $3, $4::jsonb, $5::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        membership.id,
+        JSON.stringify({ active: true, role: membership.role }),
+        JSON.stringify({ active: false, role: membership.role }),
+      ],
+    );
+
+    return {
+      kind: "deactivated" as const,
+      waitingReassignmentCount: pendingRequests.rowCount ?? 0,
+    };
+  });
+}
