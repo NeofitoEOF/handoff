@@ -275,3 +275,19 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Testes de integração em PostgreSQL real
 - ✅ Contrato documentado em `docs/api-publica.md`
 - ✅ CI completo verde após implementação
+
+
+## LGPD e retenção
+
+- ✅ Retenção configurável por tenant, padrão 5 anos
+- ✅ Relatório de solicitações elegíveis para revisão de retenção
+- ✅ Sem exclusão destrutiva automática de histórico/evidências
+- ✅ Pedidos de titular: acesso, correção, eliminação e restrição
+- ✅ Estados de atendimento com bloqueio de reabertura após conclusão/rejeição
+- ✅ Exportação consolidada e auditada dos dados do titular
+- ✅ DPA com status, referência e data obrigatória quando assinado
+- ✅ Registro de operações de tratamento (ROPA): finalidade, base legal, categorias, operadores e retenção
+- ✅ Tela web de Compliance/LGPD
+- ✅ Testes de integração em PostgreSQL real
+- ✅ Documentação em `docs/lgpd-retencao.md`
+- ✅ CI completo verde após implementação
