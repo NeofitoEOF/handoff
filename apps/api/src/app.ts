@@ -38,6 +38,7 @@ import { registerMetrics } from "./metrics.js";
 
 export async function buildApp() {
   const app = Fastify({
+    trustProxy: config.TRUST_PROXY,
     logger: {
       redact: [
         "req.headers.authorization",
@@ -57,6 +58,14 @@ export async function buildApp() {
     timeWindow: "1 minute",
   });
   await app.register(cookie);
+
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  });
+
   await registerMetrics(app);
   await registerAuth(app);
   await app.register(multipart, {
