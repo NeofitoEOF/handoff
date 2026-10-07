@@ -78,7 +78,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Persistência de rascunho/autosave via upsert
 - ⏳ Formulário dinâmico
 - ✅ Submissão
-- ⏳ Link sem conta/OTP
+- ✅ Link sem conta + OTP + sessão limitada à solicitação
 - ✅ Anexos/evidências com SHA-256 e Object Storage
 - ✅ Upload XLSX
 - ✅ Validação linha a linha + confirmação explícita
