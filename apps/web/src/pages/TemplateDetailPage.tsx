@@ -31,6 +31,10 @@ export function TemplateDetailPage() {
   const [schemaText, setSchemaText] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [mappingHeaders, setMappingHeaders] = useState<string[]>([]);
+  const [mappingFields, setMappingFields] = useState<Array<{ key: string; label: string }>>([]);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [mappingConfidence, setMappingConfidence] = useState<Record<string, number>>({});
 
   const query = useQuery({
     queryKey: ["template-detail", id],
@@ -48,6 +52,46 @@ export function TemplateDetailPage() {
     setSelectedVersionId(selected.id);
     setSchemaText(JSON.stringify(selected.schema_json, null, 2));
   }, [selected?.id]);
+
+  async function suggestMapping(file: File) {
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const result = await api<{
+        headers: string[];
+        fields: Array<{ key: string; label: string }>;
+        mapping: Record<string, string>;
+        confidence: Record<string, number>;
+      }>(`/v1/templates/${id}/import-mappings/suggest`, {
+        method: "POST",
+        body: form,
+      });
+      setMappingHeaders(result.headers);
+      setMappingFields(result.fields);
+      setMapping(result.mapping);
+      setMappingConfidence(result.confidence);
+      setMessage("Sugestão gerada. Revise o mapeamento antes de salvar.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao analisar o relatório do ERP.");
+    }
+  }
+
+  async function saveMapping() {
+    setError("");
+    try {
+      await api(`/v1/templates/${id}/import-mappings/Padrão`, {
+        method: "PUT",
+        body: JSON.stringify({
+          mapping,
+          sourceHeaders: mappingHeaders,
+        }),
+      });
+      setMessage("Mapeamento padrão do ERP salvo.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao salvar o mapeamento.");
+    }
+  }
 
   async function saveDraft() {
     if (!selected || selected.status !== "DRAFT") return;
@@ -166,6 +210,67 @@ export function TemplateDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="card">
+        <div className="page-header compact-header">
+          <div>
+            <h2>Mapeamento de ERP</h2>
+            <p className="muted">
+              Envie um XLSX real do ERP. O Handoff sugere o vínculo de cabeçalhos e o Gestor confirma uma vez.
+            </p>
+          </div>
+          <label className="button secondary file-button">
+            Analisar XLSX
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void suggestMapping(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+
+        {mappingFields.length > 0 ? (
+          <>
+            <div className="mapping-grid">
+              {mappingFields.map((field) => (
+                <label className="field mapping-row" key={field.key}>
+                  <span>
+                    {field.label}
+                    {mappingConfidence[field.key] !== undefined && (
+                      <small className="muted">
+                        {" "}· confiança {Math.round((mappingConfidence[field.key] ?? 0) * 100)}%
+                      </small>
+                    )}
+                  </span>
+                  <select
+                    value={mapping[field.key] ?? ""}
+                    onChange={(event) =>
+                      setMapping((current) => ({
+                        ...current,
+                        [field.key]: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Não mapear</option>
+                    {mappingHeaders.map((header) => (
+                      <option key={header} value={header}>{header}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <button className="primary" onClick={() => void saveMapping()}>
+              Salvar mapeamento padrão
+            </button>
+          </>
+        ) : (
+          <div className="empty-state">Nenhum relatório analisado nesta sessão.</div>
+        )}
       </div>
     </section>
   );
