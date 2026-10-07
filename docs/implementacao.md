@@ -349,3 +349,15 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Invalidação de tokens legados documentada como exceção de segurança
 - ✅ Guard validado no CI
 - ✅ Migrations aplicadas + E2E local verdes após renumeração
+
+
+## Imutabilidade de migrations
+
+- ✅ SHA-256 armazenado por migration aplicada
+- ✅ Deploy falha se migration aplicada for editada retroativamente
+- ✅ Bancos existentes recebem checksum uma única vez na atualização
+- ✅ Migration aplicada ausente da imagem interrompe o deploy
+- ✅ Aliases de renumeração legada normalizam somente o histórico, sem reaplicar SQL
+- ✅ Restore verifica checksums presentes e válidos
+- ✅ Política expand/contract documentada
+- ✅ CI principal, Security e E2E dedicado verdes com checksum habilitado
