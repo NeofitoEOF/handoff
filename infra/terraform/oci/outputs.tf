@@ -30,3 +30,8 @@ output "waf_policy_id" {
 output "waf_id" {
   value = try(oci_waf_web_app_firewall.handoff[0].id, null)
 }
+
+
+output "audit_anchor_bucket" {
+  value = oci_objectstorage_bucket.audit_anchors.name
+}
