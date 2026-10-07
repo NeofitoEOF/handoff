@@ -79,10 +79,12 @@ jobs:
           chart="$(find dist -maxdepth 1 -type f -name 'handoff-*.tgz' -print -quit)"
           test -n "$chart"
 
-          echo "api_digest=$api_digest" >> "$GITHUB_OUTPUT"
-          echo "worker_digest=$worker_digest" >> "$GITHUB_OUTPUT"
-          echo "web_digest=$web_digest" >> "$GITHUB_OUTPUT"
-          echo "chart=$chart" >> "$GITHUB_OUTPUT"
+          {
+            echo "api_digest=$api_digest"
+            echo "worker_digest=$worker_digest"
+            echo "web_digest=$web_digest"
+            echo "chart=$chart"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Verify signed images
         env:
