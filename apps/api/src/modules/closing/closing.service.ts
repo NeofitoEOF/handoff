@@ -87,6 +87,12 @@ export async function closeRequest(input: {
     );
 
     await client.query(
+      `INSERT INTO closure_documents (tenant_id, request_id, snapshot_id)
+       VALUES ($1, $2, $3)`,
+      [input.tenantId, input.requestId, snapshot.rows[0]!.id],
+    );
+
+    await client.query(
       `UPDATE requests SET status = 'CLOSED', updated_at = now() WHERE id = $1`,
       [input.requestId],
     );
@@ -99,7 +105,12 @@ export async function closeRequest(input: {
         input.tenantId,
         input.actorUserId,
         input.requestId,
-        JSON.stringify({ status: "CLOSED", snapshotId: snapshot.rows[0]!.id, sha256: snapshot.rows[0]!.sha256 }),
+        JSON.stringify({
+          status: "CLOSED",
+          snapshotId: snapshot.rows[0]!.id,
+          sha256: snapshot.rows[0]!.sha256,
+          pdfStatus: "PENDING",
+        }),
       ],
     );
 
