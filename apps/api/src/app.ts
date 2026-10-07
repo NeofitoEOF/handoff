@@ -32,6 +32,7 @@ import { commentRoutes } from "./modules/comments/comment.routes.js";
 import { microsoftRoutes } from "./modules/integrations/microsoft.routes.js";
 import { importMappingRoutes } from "./modules/imports/import-mapping.routes.js";
 import { billingRoutes } from "./modules/billing/billing.routes.js";
+import { registerMetrics } from "./metrics.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -54,6 +55,7 @@ export async function buildApp() {
     timeWindow: "1 minute",
   });
   await app.register(cookie);
+  await registerMetrics(app);
   await registerAuth(app);
   await app.register(multipart, {
     limits: {
