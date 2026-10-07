@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 const { Client } = pg;
@@ -48,7 +49,10 @@ try {
     )
   `);
 
-  const migrationsDir = path.resolve(process.cwd(), "migrations");
+  const migrationsDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../migrations",
+  );
   const files = (await fs.readdir(migrationsDir))
     .filter((name) => /^\d+.*\.sql$/.test(name))
     .sort();
