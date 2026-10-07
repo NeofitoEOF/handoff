@@ -36,6 +36,23 @@ jobs:
         id: meta
         run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
+      - name: Validate release metadata
+        env:
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+        run: node scripts/check-release.mjs
+
+      - name: Render release notes
+        env:
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          awk -v heading="## ["$version"]" '
+            $0 == heading || index($0, heading " - ") == 1 {capture=1; next}
+            capture && /^## \[/ {exit}
+            capture {print}
+          ' CHANGELOG.md > dist-release-notes.md
+          test -s dist-release-notes.md
+
       - name: Build and push API
         id: api
         uses: docker/build-push-action@v6
@@ -178,5 +195,5 @@ jobs:
             dist/SHA256SUMS \
             "$chart" \
             --verify-tag \
-            --generate-notes \
+            --notes-file dist-release-notes.md \
             --title "$TAG"
