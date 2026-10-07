@@ -51,6 +51,16 @@ services:
     ports:
       - "3001:3000"
 
+  clamav:
+    image: clamav/clamav:latest
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
 volumes:
   handoff-postgres:
   handoff-minio:
