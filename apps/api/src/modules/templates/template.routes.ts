@@ -3,8 +3,10 @@ import { z } from "zod";
 import {
   createTemplate,
   createTemplateVersion,
+  getTemplateDetail,
   listTemplates,
   publishTemplateVersion,
+  updateDraftTemplateVersion,
 } from "./template.service.js";
 import { cloneLibraryTemplate, listTemplateLibrary } from "./template-library.service.js";
 import { inferTemplateFromXlsx } from "./template-inference.service.js";
@@ -92,6 +94,50 @@ export async function templateRoutes(app: FastifyInstance): Promise<void> {
       });
     },
   );
+  app.get("/v1/templates/:templateId", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = z.object({ templateId: z.string().uuid() }).parse(request.params);
+    const result = await getTemplateDetail({
+      tenantId: request.user.tenantId,
+      actorUserId: request.user.sub,
+      templateId: params.templateId,
+    });
+    if (result.kind === "not_found") return reply.code(404).send({ message: "Modelo não encontrado." });
+    if (result.kind === "forbidden") return reply.code(403).send({ message: "Sem acesso ao modelo." });
+    return reply.send({ template: result.template, versions: result.versions });
+  });
+
+  app.patch(
+    "/v1/templates/:templateId/versions/:versionId",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({
+        templateId: z.string().uuid(),
+        versionId: z.string().uuid(),
+      }).parse(request.params);
+      const body = z.object({ schema: schemaSchema }).parse(request.body);
+
+      const result = await updateDraftTemplateVersion({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        templateId: params.templateId,
+        versionId: params.versionId,
+        schema: body.schema,
+      });
+
+      switch (result.kind) {
+        case "not_found":
+        case "version_not_found":
+          return reply.code(404).send({ message: "Modelo/versão não encontrado." });
+        case "forbidden":
+          return reply.code(403).send({ message: "Somente Gestor pode editar o rascunho." });
+        case "immutable":
+          return reply.code(409).send({ message: "Versão publicada é imutável." });
+        case "updated":
+          return reply.send(result.version);
+      }
+    },
+  );
+
   app.get("/v1/sectors/:sectorId/templates", { preHandler: app.authenticate }, async (request, reply) => {
     const params = z.object({ sectorId: z.string().uuid() }).parse(request.params);
     const result = await listTemplates({
