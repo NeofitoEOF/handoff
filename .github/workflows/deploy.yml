@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: "Immutable image tag or SHA"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.0
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Helm deploy
+        run: |
+          helm upgrade --install handoff infra/helm/handoff \
+            --namespace handoff \
+            --create-namespace \
+            --wait \
+            --timeout 10m \
+            --set domain="${{ vars.HANDOFF_DOMAIN }}" \
+            --set images.api.tag="${{ inputs.image_tag }}" \
+            --set images.web.tag="${{ inputs.image_tag }}" \
+            --set images.worker.tag="${{ inputs.image_tag }}" \
+            --set externalSecrets.enabled=true \
+            --set observability.serviceMonitor.enabled="${{ vars.SERVICE_MONITOR_ENABLED || 'false' }}"
+
+      - name: Rollout status
+        run: |
+          kubectl -n handoff rollout status deploy/handoff-api --timeout=5m
+          kubectl -n handoff rollout status deploy/handoff-web --timeout=5m
+          kubectl -n handoff rollout status deploy/handoff-worker --timeout=5m
+
+      - name: Deployment smoke
+        env:
+          API_URL: ${{ vars.SMOKE_API_URL }}
+          WEB_URL: ${{ vars.SMOKE_WEB_URL }}
+          SMOKE_SUBDOMAIN: ${{ vars.STAGING_SMOKE_SUBDOMAIN }}
+          SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+          SMOKE_OTP: ${{ secrets.STAGING_SMOKE_OTP }}
+        run: sh scripts/smoke-deploy.sh
