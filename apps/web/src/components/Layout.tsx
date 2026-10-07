@@ -12,6 +12,8 @@ export function Layout() {
           <NavLink to="/inbox">Caixa de entrada</NavLink>
           <NavLink to="/requests/new">Nova solicitação</NavLink>
           <NavLink to="/sectors">Setores</NavLink>
+          <NavLink to="/templates">Modelos</NavLink>
+          <NavLink to="/notifications">Notificações</NavLink>
           <NavLink to="/audit">Auditoria</NavLink>
           <NavLink to="/admin">Administração</NavLink>
         </nav>
