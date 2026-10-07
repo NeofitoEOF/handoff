@@ -58,7 +58,7 @@ export async function assignRequest(input: {
     await client.query(
       `INSERT INTO request_assignment_history
         (tenant_id, request_id, previous_assignee_id, new_assignee_id, changed_by, reason)
-       VALUES ($1, $2, $3, $4, $5, 'WRONG_ASSIGNMENT')`,
+       VALUES ($1, $2, $3, $4, $5, 'INITIAL_ASSIGNMENT')`,
       [
         input.tenantId,
         input.requestId,
