@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { importXlsx } from "./import.service.js";
+import { confirmXlsxImport, importXlsx } from "./import.service.js";
 
 export async function importRoutes(app: FastifyInstance): Promise<void> {
   app.post("/v1/requests/:id/imports/xlsx", { preHandler: app.authenticate }, async (request, reply) => {
@@ -32,7 +32,32 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
       case "empty_workbook": return reply.code(422).send({ message: "Planilha sem worksheet." });
       case "too_many_rows": return reply.code(422).send({ message: "Limite de 10.000 linhas excedido." });
       case "too_many_columns": return reply.code(422).send({ message: "Limite de 200 colunas excedido." });
-      case "completed": return reply.code(200).send(result);
+      case "validated": return reply.code(200).send(result);
     }
   });
+  app.post(
+    "/v1/requests/:id/imports/:importId/confirm",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({
+        id: z.string().uuid(),
+        importId: z.string().uuid(),
+      }).parse(request.params);
+
+      const result = await confirmXlsxImport({
+        tenantId: request.user.tenantId,
+        requestId: params.id,
+        importId: params.importId,
+        actorUserId: request.user.sub,
+      });
+
+      switch (result.kind) {
+        case "not_found": return reply.code(404).send({ message: "Importação não encontrada." });
+        case "forbidden": return reply.code(403).send({ message: "Somente quem enviou pode confirmar esta importação." });
+        case "invalid_state": return reply.code(409).send({ message: "Importação não está pronta para confirmação.", status: result.status });
+        case "already_confirmed": return reply.code(200).send({ confirmed: true, changed: false });
+        case "confirmed": return reply.code(200).send({ confirmed: true, changed: true, importedRows: result.importedRows });
+      }
+    },
+  );
 }
