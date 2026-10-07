@@ -293,8 +293,8 @@ export async function enqueueWebhookEvent(
     `SELECT id
        FROM webhooks
       WHERE active = true
-        AND $2 = ANY(events)`,
-    [input.tenantId, input.eventType],
+        AND $1 = ANY(events)`,
+    [input.eventType],
   );
 
   for (const hook of hooks.rows) {
