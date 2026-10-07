@@ -56,9 +56,12 @@ export async function closeRequest(input: {
     }
 
     const items = await client.query(
-      `SELECT id, item_key, data, status, submitted_by, submitted_at, reviewed_by, reviewed_at
-         FROM request_items
-        WHERE request_id = $1
+      `SELECT ri.id, ri.item_key, ri.data, ri.status,
+              ri.submitted_by, ri.submitted_guest_link_id, gl.email AS submitted_guest_email,
+              ri.submitted_at, ri.reviewed_by, ri.reviewed_at
+         FROM request_items ri
+         LEFT JOIN guest_links gl ON gl.id = ri.submitted_guest_link_id
+        WHERE ri.request_id = $1
         ORDER BY created_at, item_key`,
       [input.requestId],
     );
