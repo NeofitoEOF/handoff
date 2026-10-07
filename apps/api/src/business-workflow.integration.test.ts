@@ -28,6 +28,7 @@ suite("business workflow acceptance", () => {
   let returnItem: typeof import("./modules/reviews/review.service.js").returnItem;
   let closeRequest: typeof import("./modules/closing/closing.service.js").closeRequest;
   let createRetification: typeof import("./modules/closing/closing.service.js").createRetification;
+  let deactivateSectorMember: typeof import("./modules/sectors/sector.service.js").deactivateSectorMember;
 
   beforeAll(async () => {
     if (!enabled) return;
@@ -47,6 +48,7 @@ suite("business workflow acceptance", () => {
     ({ upsertRequestItem, submitRequestItems } = await import("./modules/items/item.service.js"));
     ({ approveItem, returnItem } = await import("./modules/reviews/review.service.js"));
     ({ closeRequest, createRetification } = await import("./modules/closing/closing.service.js"));
+    ({ deactivateSectorMember } = await import("./modules/sectors/sector.service.js"));
 
     admin = new Client({ connectionString: adminUrl! });
     await admin.connect();
@@ -277,5 +279,64 @@ suite("business workflow acceptance", () => {
       expect(retification.request.status).toBe("OPEN");
       expect(retification.request.retifies_request_id).toBe(requestId);
     }
+  });
+
+  it("moves pending work to WAITING_REASSIGNMENT when the current assignee is deactivated", async () => {
+    const originalDueAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+
+    const created = await createRequest({
+      tenantId,
+      actorUserId: creatorId,
+      originSectorId,
+      destinationSectorId,
+      title: "Solicitação para desligamento",
+      dueAt: originalDueAt,
+    });
+
+    expect(created.kind).toBe("created");
+    if (created.kind !== "created") return;
+    const requestId = created.request.id as string;
+
+    const assigned = await assignRequest({
+      tenantId,
+      requestId,
+      actorUserId: destinationManagerId,
+      assigneeUserId: assigneeAId,
+    });
+    expect(assigned.kind).toBe("assigned");
+
+    const deactivated = await deactivateSectorMember({
+      tenantId,
+      actorUserId: destinationManagerId,
+      sectorId: destinationSectorId,
+      userId: assigneeAId,
+    });
+    expect(deactivated.kind).toBe("deactivated");
+    if (deactivated.kind === "deactivated") {
+      expect(deactivated.waitingReassignmentCount).toBeGreaterThanOrEqual(1);
+    }
+
+    const request = await admin.query<{
+      assigned_to: string | null;
+      status: string;
+      due_at: Date;
+    }>(
+      `SELECT assigned_to, status, due_at FROM requests WHERE id = $1`,
+      [requestId],
+    );
+
+    expect(request.rows[0]!.assigned_to).toBeNull();
+    expect(request.rows[0]!.status).toBe("WAITING_REASSIGNMENT");
+    expect(request.rows[0]!.due_at.toISOString()).toBe(originalDueAt.toISOString());
+
+    const membership = await admin.query<{ active: boolean }>(
+      `SELECT active
+         FROM memberships
+        WHERE tenant_id = $1
+          AND sector_id = $2
+          AND user_id = $3`,
+      [tenantId, destinationSectorId, assigneeAId],
+    );
+    expect(membership.rows[0]!.active).toBe(false);
   });
 });
