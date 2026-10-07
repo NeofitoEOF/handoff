@@ -45,6 +45,10 @@ export async function updateComplianceSettings(input: {
       return { kind: "forbidden" as const };
     }
 
+    if (input.dpaStatus === "SIGNED" && !input.dpaSignedAt) {
+      return { kind: "invalid_dpa" as const };
+    }
+
     const before = await client.query(
       `SELECT retention_years, default_legal_basis, dpa_status, dpa_reference, dpa_signed_at
          FROM tenant_compliance_settings
