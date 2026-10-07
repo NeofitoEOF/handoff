@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, downloadAuthenticated } from "../api";
+import { DeadLetterPanel } from "../components/DeadLetterPanel";
 
 export function AdminPage() {
   const [setup, setSetup] = useState<{ secret: string; otpauthUri: string } | null>(null);
@@ -232,6 +233,8 @@ export function AdminPage() {
           </p>
         </div>
       )}
+
+      <DeadLetterPanel />
 
       <div className="card">
         <h2>Exportação da empresa</h2>
