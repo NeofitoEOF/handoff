@@ -24,6 +24,7 @@ import { dashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
 import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { campaignRoutes } from "./modules/campaigns/campaign.routes.js";
 import { tenantRoutes } from "./modules/tenancy/tenant.routes.js";
+import { complianceRoutes } from "./modules/tenancy/compliance.routes.js";
 import { guestRoutes } from "./modules/guest/guest.routes.js";
 import { guestFileRoutes } from "./modules/guest/guest-files.routes.js";
 import { notificationRoutes } from "./modules/notifications/notification.routes.js";
@@ -76,6 +77,7 @@ export async function buildApp() {
   await app.register(auditRoutes);
   await app.register(campaignRoutes);
   await app.register(tenantRoutes);
+  await app.register(complianceRoutes);
   await app.register(guestRoutes);
   await app.register(guestFileRoutes);
   await app.register(notificationRoutes);
