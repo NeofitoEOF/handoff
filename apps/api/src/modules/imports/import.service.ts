@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import ExcelJS from "exceljs";
 import { withTenantTransaction } from "../../db.js";
 import { putObject } from "../../storage.js";
+import { scanBuffer } from "../../antivirus.js";
 
 type TemplateField = {
   key: string;
@@ -55,6 +56,14 @@ export async function importXlsx(input: {
 }) {
   if (input.buffer.byteLength > 20 * 1024 * 1024) {
     return { kind: "file_too_large" as const };
+  }
+
+  const antivirus = await scanBuffer(input.buffer);
+  if (antivirus.status === "INFECTED") {
+    return { kind: "malware_detected" as const, signature: antivirus.signature };
+  }
+  if (antivirus.status === "UNAVAILABLE") {
+    return { kind: "antivirus_unavailable" as const, error: antivirus.error };
   }
 
   const sha256 = crypto.createHash("sha256").update(input.buffer).digest("hex");
