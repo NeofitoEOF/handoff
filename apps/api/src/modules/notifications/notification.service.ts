@@ -89,3 +89,41 @@ export async function markNotificationRead(input: {
     return result.rows[0] ?? null;
   });
 }
+
+
+export async function enqueueTeams(
+  client: DbClient,
+  input: {
+    tenantId: string;
+    requestId?: string;
+    title: string;
+    message: string;
+    dedupeKey: string;
+  },
+): Promise<void> {
+  const integration = await client.query(
+    `SELECT 1
+       FROM tenant_microsoft_integrations
+      WHERE tenant_id = $1
+        AND enabled = true
+        AND teams_webhook_ciphertext IS NOT NULL
+      LIMIT 1`,
+    [input.tenantId],
+  );
+
+  if (integration.rowCount !== 1) return;
+
+  await client.query(
+    `INSERT INTO teams_outbox
+      (tenant_id, request_id, title, message, dedupe_key)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (tenant_id, dedupe_key) DO NOTHING`,
+    [
+      input.tenantId,
+      input.requestId ?? null,
+      input.title,
+      input.message,
+      input.dedupeKey,
+    ],
+  );
+}
