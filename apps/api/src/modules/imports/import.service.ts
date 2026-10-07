@@ -100,7 +100,7 @@ export async function importXlsx(input: {
   await putObject({ key: storageKey, body: input.buffer, contentType: input.mimeType });
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(input.buffer);
+  await workbook.xlsx.load(input.buffer as any);
   const worksheet = workbook.worksheets[0];
   if (!worksheet) return { kind: "empty_workbook" as const };
   if (worksheet.rowCount > 10001) return { kind: "too_many_rows" as const };
