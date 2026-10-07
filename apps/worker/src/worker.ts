@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { config } from "./config.js";
 import { generatePdf, renderClosureHtml, storePdf } from "./pdf.js";
 import { decryptTeamsWebhook, sendTeamsWebhook } from "./teams.js";
+import { decryptWebhookSecret, sendSignedWebhook } from "./webhook.js";
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: config.DATABASE_URL, max: 5 });
@@ -340,6 +341,87 @@ async function processTeamsOutbox(tenantId: string) {
   }
 }
 
+async function processWebhookOutbox(tenantId: string) {
+  const claimed = await withTenant(tenantId, async (client) => {
+    const result = await client.query<{
+      id: string;
+      event_id: string;
+      event_type: string;
+      payload: Record<string, unknown>;
+      url: string;
+      secret_ciphertext: string;
+      secret_iv: string;
+      secret_tag: string;
+    }>(
+      `SELECT o.id, o.event_id, o.event_type, o.payload,
+              w.url, w.secret_ciphertext, w.secret_iv, w.secret_tag
+         FROM webhook_outbox o
+         JOIN webhooks w ON w.id = o.webhook_id
+        WHERE o.status IN ('PENDING', 'FAILED')
+          AND o.available_at <= now()
+          AND o.attempts < 8
+          AND w.active = true
+        ORDER BY o.created_at
+        LIMIT 20
+        FOR UPDATE OF o SKIP LOCKED`,
+    );
+
+    if (result.rows.length) {
+      await client.query(
+        `UPDATE webhook_outbox
+            SET status = 'PROCESSING'
+          WHERE id = ANY($1::uuid[])`,
+        [result.rows.map((row) => row.id)],
+      );
+    }
+
+    return result.rows;
+  });
+
+  for (const event of claimed) {
+    try {
+      const secret = decryptWebhookSecret({
+        ciphertext: event.secret_ciphertext,
+        iv: event.secret_iv,
+        tag: event.secret_tag,
+      });
+
+      await sendSignedWebhook({
+        url: event.url,
+        secret,
+        eventId: event.event_id,
+        eventType: event.event_type,
+        payload: event.payload,
+      });
+
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE webhook_outbox
+              SET status = 'SENT',
+                  sent_at = now(),
+                  attempts = attempts + 1,
+                  last_error = NULL
+            WHERE id = $1`,
+          [event.id],
+        );
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE webhook_outbox
+              SET status = 'FAILED',
+                  attempts = attempts + 1,
+                  last_error = $2,
+                  available_at = now() + make_interval(mins => LEAST(60, power(2, LEAST(attempts, 5))::int))
+            WHERE id = $1`,
+          [event.id, message.slice(0, 2000)],
+        );
+      });
+    }
+  }
+}
+
 async function enqueueReminders(tenantId: string) {
   await withTenant(tenantId, async (client) => {
     const rows = await client.query<{
@@ -364,6 +446,31 @@ async function enqueueReminders(tenantId: string) {
       const dedupeKey = overdue
         ? `request:${row.id}:overdue:${day}`
         : `request:${row.id}:due48`;
+
+      if (overdue) {
+        const hooks = await client.query<{ id: string }>(
+          `SELECT id FROM webhooks WHERE active = true AND 'request.overdue' = ANY(events)`,
+        );
+        for (const hook of hooks.rows) {
+          await client.query(
+            `INSERT INTO webhook_outbox
+              (tenant_id, webhook_id, event_type, payload, dedupe_key)
+             VALUES ($1, $2, 'request.overdue', $3::jsonb, $4)
+             ON CONFLICT (tenant_id, webhook_id, dedupe_key) DO NOTHING`,
+            [
+              tenantId,
+              hook.id,
+              JSON.stringify({
+                requestId: row.id,
+                title: row.title,
+                dueAt: row.due_at,
+                status: "OVERDUE",
+              }),
+              `request:${row.id}:overdue:${day}`,
+            ],
+          );
+        }
+      }
 
       const subject = overdue
         ? `[Handoff] Solicitação atrasada: ${row.title}`
@@ -530,6 +637,7 @@ async function tick() {
     await processClosureDocuments(tenant.id);
     await processTeamsOutbox(tenant.id);
     await enqueueReminders(tenant.id);
+    await processWebhookOutbox(tenant.id);
     await processOutbox(tenant.id);
   }
 }
