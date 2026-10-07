@@ -42,7 +42,13 @@ jobs:
       TF_VAR_postgres_system_type: ${{ vars.OCI_POSTGRES_SYSTEM_TYPE }}
       TF_VAR_postgres_storage_system_type: ${{ vars.OCI_POSTGRES_STORAGE_SYSTEM_TYPE }}
       TF_VAR_waf_enabled: ${{ vars.OCI_WAF_ENABLED || 'false' }}
-      TF_VAR_waf_load_balancer_id: ${{ vars.OCI_WAF_LOAD_BALANCER_ID || null }}
+      TF_VAR_waf_load_balancer_id: ${{ vars.OCI_WAF_LOAD_BALANCER_ID || '' }}
+      OCI_STATE_BUCKET: ${{ vars.OCI_STATE_BUCKET }}
+      OCI_OBJECT_STORAGE_NAMESPACE: ${{ vars.OCI_OBJECT_STORAGE_NAMESPACE }}
+      OCI_REGION: ${{ vars.OCI_REGION }}
+      TF_STATE_KEY: handoff/${{ inputs.environment }}/terraform.tfstate
+      AWS_ACCESS_KEY_ID: ${{ secrets.OCI_STATE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_STATE_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +68,8 @@ jobs:
           printf '[DEFAULT]\nuser=%s\nfingerprint=%s\ntenancy=%s\nregion=%s\nkey_file=%s/.oci/oci_api_key.pem\n' \
             "$OCI_USER_OCID" "$OCI_FINGERPRINT" "$TF_VAR_tenancy_id" "$TF_VAR_region" "$HOME" > "$HOME/.oci/config"
 
-      - run: terraform init
+      - name: Terraform init
+        run: sh ../../../scripts/terraform-init-oci-state.sh
       - run: terraform plan -no-color -out=tfplan
       - run: terraform apply -auto-approve tfplan
       - name: Export outputs
