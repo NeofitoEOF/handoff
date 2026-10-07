@@ -6,6 +6,8 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get("/v1/inbox", { preHandler: app.authenticate }, async (request) => {
     const query = z.object({
       view: z.enum(["assigned", "sector", "to_review", "overdue"]).default("assigned"),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
+      offset: z.coerce.number().int().min(0).default(0),
     }).parse(request.query);
 
     return {
@@ -13,7 +15,13 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
         tenantId: request.user.tenantId,
         userId: request.user.sub,
         view: query.view,
+        limit: query.limit,
+        offset: query.offset,
       }),
+      pagination: {
+        limit: query.limit,
+        offset: query.offset,
+      },
     };
   });
 
