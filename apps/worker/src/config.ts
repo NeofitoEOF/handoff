@@ -18,6 +18,7 @@ const envSchema = z.object({
   OBJECT_STORAGE_ENDPOINT: z.string().url().default("http://localhost:9000"),
   OBJECT_STORAGE_REGION: z.string().default("us-east-1"),
   OBJECT_STORAGE_BUCKET: z.string().default("handoff"),
+  AUDIT_ANCHOR_BUCKET: z.string().default("handoff-audit-anchors"),
   OBJECT_STORAGE_ACCESS_KEY: z.string().min(1),
   OBJECT_STORAGE_SECRET_KEY: z.string().min(1),
   OBJECT_STORAGE_FORCE_PATH_STYLE: envBoolean.default(true),
