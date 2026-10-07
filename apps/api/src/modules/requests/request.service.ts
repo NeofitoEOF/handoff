@@ -1,6 +1,6 @@
 import type { DbClient } from "../../db.js";
 import { withTenantTransaction } from "../../db.js";
-import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
+import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
 
 export type ReassignRequestInput = {
   tenantId: string;
@@ -132,6 +132,14 @@ export async function reassignRequest(input: ReassignRequestInput) {
         message: "Você é o novo responsável por uma solicitação.",
       });
     }
+
+    await enqueueTeams(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      title: "Solicitação reatribuída",
+      message: `Novo responsável definido. Motivo: ${input.reason}.`,
+      dedupeKey: `request-reassigned-teams:${input.requestId}:${input.newAssigneeUserId}:${input.reason}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
