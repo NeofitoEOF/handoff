@@ -2,15 +2,16 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: handoff
-      POSTGRES_PASSWORD: handoff
+      POSTGRES_USER: handoff_admin
+      POSTGRES_PASSWORD: handoff_admin
       POSTGRES_DB: handoff
     ports:
       - "5432:5432"
     volumes:
       - handoff-postgres:/var/lib/postgresql/data
+      - ./docker/postgres/001-app-user.sql:/docker-entrypoint-initdb.d/001-app-user.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U handoff -d handoff"]
+      test: ["CMD-SHELL", "pg_isready -U handoff_admin -d handoff"]
       interval: 5s
       timeout: 5s
       retries: 10
