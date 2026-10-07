@@ -17,6 +17,10 @@ spec:
         app.kubernetes.io/name: handoff
         app.kubernetes.io/component: worker
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: worker
           image: "{{ .Values.images.worker.repository }}{{ if .Values.images.worker.digest }}@{{ .Values.images.worker.digest }}{{ else }}:{{ .Values.images.worker.tag }}{{ end }}"
