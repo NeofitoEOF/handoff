@@ -144,3 +144,21 @@ export async function exportTenantData(input: {
     };
   });
 }
+
+
+export async function resolveTenantBySubdomain(subdomain: string) {
+  const result = await pool.query<{
+    id: string;
+    name: string;
+    subdomain: string;
+  }>(
+    `SELECT id, name, subdomain
+       FROM tenants
+      WHERE lower(subdomain) = lower($1)
+        AND active = true
+      LIMIT 1`,
+    [subdomain],
+  );
+
+  return result.rows[0] ?? null;
+}
