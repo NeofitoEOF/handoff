@@ -78,6 +78,12 @@ observability:
   serviceMonitor:
     enabled: false
     interval: 30s
+  prometheusRule:
+    enabled: false
+    apiDownFor: 2m
+    databaseDownFor: 1m
+    high5xxFor: 5m
+    high5xxRatio: 0.05
 
 
 externalSecrets:
