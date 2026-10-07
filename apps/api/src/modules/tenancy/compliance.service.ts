@@ -45,16 +45,38 @@ export async function updateComplianceSettings(input: {
       return { kind: "forbidden" as const };
     }
 
-    if (input.dpaStatus === "SIGNED" && !input.dpaSignedAt) {
-      return { kind: "invalid_dpa" as const };
-    }
-
-    const before = await client.query(
+    const before = await client.query<{
+      retention_years: number;
+      default_legal_basis: string | null;
+      dpa_status: "NOT_CONFIGURED" | "DRAFT" | "SIGNED";
+      dpa_reference: string | null;
+      dpa_signed_at: Date | null;
+    }>(
       `SELECT retention_years, default_legal_basis, dpa_status, dpa_reference, dpa_signed_at
          FROM tenant_compliance_settings
         WHERE tenant_id = $1`,
       [input.tenantId],
     );
+
+    const previous = before.rows[0];
+    const dpaStatus = input.dpaStatus ?? previous?.dpa_status ?? "NOT_CONFIGURED";
+    const dpaReference =
+      input.dpaReference !== undefined
+        ? input.dpaReference
+        : previous?.dpa_reference ?? null;
+    const dpaSignedAt =
+      dpaStatus === "SIGNED"
+        ? input.dpaSignedAt ?? previous?.dpa_signed_at ?? null
+        : null;
+
+    if (dpaStatus === "SIGNED" && !dpaSignedAt) {
+      return { kind: "invalid_dpa" as const };
+    }
+
+    const defaultLegalBasis =
+      input.defaultLegalBasis !== undefined
+        ? input.defaultLegalBasis
+        : previous?.default_legal_basis ?? null;
 
     const result = await client.query(
       `INSERT INTO tenant_compliance_settings
@@ -75,10 +97,10 @@ export async function updateComplianceSettings(input: {
       [
         input.tenantId,
         input.retentionYears,
-        input.defaultLegalBasis ?? null,
-        input.dpaStatus ?? "NOT_CONFIGURED",
-        input.dpaReference ?? null,
-        input.dpaSignedAt ?? null,
+        defaultLegalBasis,
+        dpaStatus,
+        dpaReference,
+        dpaSignedAt,
         input.actorUserId,
       ],
     );
@@ -90,7 +112,7 @@ export async function updateComplianceSettings(input: {
       [
         input.tenantId,
         input.actorUserId,
-        JSON.stringify(before.rows[0] ?? null),
+        JSON.stringify(previous ?? null),
         JSON.stringify(result.rows[0]),
       ],
     );
