@@ -26,6 +26,7 @@ import { guestRoutes } from "./modules/guest/guest.routes.js";
 import { guestFileRoutes } from "./modules/guest/guest-files.routes.js";
 import { notificationRoutes } from "./modules/notifications/notification.routes.js";
 import { requestExportRoutes } from "./modules/exports/request-export.routes.js";
+import { commentRoutes } from "./modules/comments/comment.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -60,6 +61,7 @@ export async function buildApp() {
   await app.register(guestFileRoutes);
   await app.register(notificationRoutes);
   await app.register(requestExportRoutes);
+  await app.register(commentRoutes);
   await app.register(sectorRoutes);
   await app.register(requestCreateRoutes);
   await app.register(requestAssignmentRoutes);
