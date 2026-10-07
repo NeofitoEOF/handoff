@@ -102,9 +102,9 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Evento de membership
 - ✅ Evento de criação de solicitação
 - ✅ Evento de reatribuição
-- ⏳ Proteção append-only por role/trigger
-- ⏳ Timeline por campo/item
-- ⏳ Exportação da trilha
+- ✅ Proteção append-only por trigger
+- ✅ Timeline por solicitação/item/evidência/importação
+- ✅ Exportação CSV da trilha
 - ⏳ Hash encadeado opcional
 
 ## Notificações, painel e integrações
@@ -112,8 +112,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ⏳ E-mail transacional
 - ⏳ Lembretes de prazo
 - ⏳ Escalonamento de atraso
-- ⏳ Caixa de entrada
-- ⏳ Indicadores por setor
+- ✅ Caixa de entrada backend
+- ✅ Indicadores por setor backend
 - ⏳ Login Microsoft/Entra ID
 - ⏳ Outlook/Teams
 
