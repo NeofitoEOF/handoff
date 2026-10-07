@@ -11,6 +11,7 @@ data:
   WEB_ORIGINS: {{ printf "https://%s,https://*.%s" .Values.domain .Values.domain | quote }}
   OBJECT_STORAGE_REGION: {{ .Values.config.OBJECT_STORAGE_REGION | quote }}
   OBJECT_STORAGE_BUCKET: {{ .Values.config.OBJECT_STORAGE_BUCKET | quote }}
+  AUDIT_ANCHOR_BUCKET: {{ .Values.config.AUDIT_ANCHOR_BUCKET | quote }}
   OBJECT_STORAGE_FORCE_PATH_STYLE: {{ .Values.config.OBJECT_STORAGE_FORCE_PATH_STYLE | quote }}
   CLAMAV_ENABLED: {{ .Values.config.CLAMAV_ENABLED | quote }}
   CLAMAV_HOST: {{ .Values.config.CLAMAV_HOST | quote }}
