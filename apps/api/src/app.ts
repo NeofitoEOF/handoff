@@ -3,6 +3,9 @@ import { ZodError } from "zod";
 import { registerAuth } from "./auth.js";
 import { pool } from "./db.js";
 import { requestRoutes } from "./modules/requests/request.routes.js";
+import { requestCreateRoutes } from "./modules/requests/request-create.routes.js";
+import { requestAssignmentRoutes } from "./modules/requests/request-assignment.routes.js";
+import { sectorRoutes } from "./modules/sectors/sector.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -16,6 +19,9 @@ export async function buildApp() {
     return { status: "ok" };
   });
 
+  await app.register(sectorRoutes);
+  await app.register(requestCreateRoutes);
+  await app.register(requestAssignmentRoutes);
   await app.register(requestRoutes);
 
   app.setErrorHandler((error, _request, reply) => {
