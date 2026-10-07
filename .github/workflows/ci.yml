@@ -79,3 +79,42 @@ jobs:
 
       - name: Restore smoke test
         run: sh scripts/restore-smoke.sh
+
+
+  local-e2e:
+    name: local staging e2e
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose
+        run: docker compose -f docker-compose.staging.yml config >/dev/null
+
+      - name: Start local staging stack
+        run: docker compose -f docker-compose.staging.yml up -d --build
+
+      - name: Run end-to-end business flow
+        run: sh scripts/e2e-local.sh
+
+      - name: Dump container status
+        if: always()
+        run: docker compose -f docker-compose.staging.yml ps
+
+      - name: Collect logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.staging.yml logs --no-color > local-e2e.log
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-e2e-logs
+          path: local-e2e.log
+          retention-days: 14
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose -f docker-compose.staging.yml down -v --remove-orphans
