@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
-import { pool } from "../../db.js";
+import { pool, withTenantTransaction } from "../../db.js";
 import { hashPassword } from "./identity.service.js";
+import { enqueueEmail } from "../notifications/notification.service.js";
+import { config } from "../../config.js";
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -43,6 +45,16 @@ export async function createPasswordReset(input: {
      VALUES ($1, $2, $3)`,
     [user.rows[0].id, tokenHash, expiresAt],
   );
+
+  await withTenantTransaction(input.tenantId, async (client) => {
+    await enqueueEmail(client, {
+      tenantId: input.tenantId,
+      recipientEmail: input.email,
+      subject: "[Handoff] Recuperação de senha",
+      bodyText: `Use o link ${config.APP_BASE_URL}/reset-password?token=${encodeURIComponent(token)}. O link expira em 30 minutos.`,
+      dedupeKey: `password-reset:${user.rows[0]!.id}:${tokenHash}`,
+    });
+  });
 
   return { kind: "accepted" as const, token, expiresAt };
 }
