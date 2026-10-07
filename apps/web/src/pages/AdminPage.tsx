@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, downloadAuthenticated } from "../api";
 
 export function AdminPage() {
@@ -8,6 +8,56 @@ export function AdminPage() {
   const [error, setError] = useState("");
   const [entraTenantId, setEntraTenantId] = useState("");
   const [microsoftEnabled, setMicrosoftEnabled] = useState(true);
+  const [teamsWebhookUrl, setTeamsWebhookUrl] = useState("");
+  const [hasTeamsWebhook, setHasTeamsWebhook] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const integration = await api<{
+          entra_tenant_id: string;
+          enabled: boolean;
+          has_teams_webhook: boolean;
+        } | null>("/v1/admin/integrations/microsoft");
+
+        if (!cancelled && integration) {
+          setEntraTenantId(integration.entra_tenant_id);
+          setMicrosoftEnabled(integration.enabled);
+          setHasTeamsWebhook(integration.has_teams_webhook);
+        }
+      } catch {
+        // Tela continua utilizável mesmo antes da integração existir.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function saveTeamsWebhook(remove = false) {
+    setError("");
+    try {
+      const result = await api<{ configured: boolean }>(
+        "/v1/admin/integrations/microsoft/teams",
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            webhookUrl: remove ? null : teamsWebhookUrl,
+          }),
+        },
+      );
+      setHasTeamsWebhook(result.configured);
+      setTeamsWebhookUrl("");
+      setMessage(
+        result.configured
+          ? "Webhook do Microsoft Teams configurado."
+          : "Webhook do Microsoft Teams removido.",
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao configurar Teams.");
+    }
+  }
 
   async function saveMicrosoft() {
     setError("");
