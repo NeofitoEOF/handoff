@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: "{{ .Values.images.api.repository }}:{{ .Values.images.api.tag }}"
+          image: "{{ .Values.images.api.repository }}{{ if .Values.images.api.digest }}@{{ .Values.images.api.digest }}{{ else }}:{{ .Values.images.api.tag }}{{ end }}"
           imagePullPolicy: {{ .Values.images.api.pullPolicy }}
           ports:
             - name: http
