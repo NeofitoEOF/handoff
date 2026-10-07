@@ -44,7 +44,7 @@ export async function inferTemplateFromXlsx(buffer: Buffer) {
   }
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  await workbook.xlsx.load(buffer as any);
   const sheet = workbook.worksheets[0];
   if (!sheet) return { kind: "empty_workbook" as const };
   if (sheet.columnCount > 200) return { kind: "too_many_columns" as const };
