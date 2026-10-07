@@ -402,3 +402,13 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Tela de Administração mostra falhas esgotadas e permite reenfileirar
 - ✅ Teste de integração cobre autorização, listagem, retry e auditoria
 - ✅ CI, Security e E2E verdes após implementação
+
+## Limites por plano — proteção de concorrência
+
+- ✅ Criação de setores serializada por tenant até o commit, inclusive sem perfil de cobrança (fallback Starter)
+- ✅ Teste PostgreSQL: quatro criações disputam a última vaga; somente uma cria setor e evento de auditoria
+- ✅ Uso de armazenamento filtrado explicitamente por tenant, além do RLS
+- ✅ Tamanho de entrada validado como inteiro seguro não negativo; testes de limite exato e excesso
+- ⏳ Quota de solicitações/mês: definir os valores comerciais por plano antes de aplicar em criação, campanhas, recorrências e retificações
+- ⏳ Rate limit agregado por tenant para todas as instâncias da API
+- ⏳ Enterprise: definir armazenamento contratual (o código atual considera ilimitado)

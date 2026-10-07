@@ -57,6 +57,12 @@ export async function canEnableAnotherSector(
   client: import("../../db.js").DbClient,
   tenantId: string,
 ) {
+  // Hold through the sector INSERT/COMMIT so concurrent requests cannot
+  // both consume the last available slot (including profiles not yet created).
+  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+    `sector-quota:${tenantId}`,
+  ]);
+
   const profile = await getTenantPlan(client, tenantId);
   if (["SUSPENDED", "CANCELLED"].includes(profile.status)) {
     return {
@@ -95,6 +101,10 @@ export async function checkTenantStorageCapacity(
   tenantId: string,
   incomingBytes: number,
 ) {
+  if (!Number.isSafeInteger(incomingBytes) || incomingBytes < 0) {
+    throw new RangeError("incomingBytes must be a non-negative safe integer");
+  }
+
   const profile = await getTenantPlan(client, tenantId);
   if (["SUSPENDED", "CANCELLED"].includes(profile.status)) {
     return {
@@ -116,8 +126,9 @@ export async function checkTenantStorageCapacity(
 
   const usage = await client.query<{ bytes: string }>(
     `SELECT
-        COALESCE((SELECT sum(size_bytes) FROM attachments), 0) +
-        COALESCE((SELECT sum(size_bytes) FROM imports), 0) AS bytes`,
+        COALESCE((SELECT sum(size_bytes) FROM attachments WHERE tenant_id = $1), 0) +
+        COALESCE((SELECT sum(size_bytes) FROM imports WHERE tenant_id = $1), 0) AS bytes`,
+    [tenantId],
   );
   const usedBytes = Number(usage.rows[0]?.bytes ?? 0);
   const limitBytes = entitlement.storageBytes;
@@ -164,8 +175,9 @@ export async function getBillingSummary(input: {
     );
     const storage = await client.query<{ bytes: string }>(
       `SELECT
-          COALESCE((SELECT sum(size_bytes) FROM attachments), 0) +
-          COALESCE((SELECT sum(size_bytes) FROM imports), 0) AS bytes`,
+          COALESCE((SELECT sum(size_bytes) FROM attachments WHERE tenant_id = $1), 0) +
+          COALESCE((SELECT sum(size_bytes) FROM imports WHERE tenant_id = $1), 0) AS bytes`,
+      [input.tenantId],
     );
 
     const enabledSectors = Number(sectorCount.rows[0]?.count ?? 0);
