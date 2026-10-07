@@ -58,3 +58,6 @@ jobs:
 
       - name: Lint Helm chart
         run: helm lint infra/helm/handoff
+
+      - name: Restore smoke test
+        run: sh scripts/restore-smoke.sh
