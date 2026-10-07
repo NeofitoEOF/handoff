@@ -6,12 +6,14 @@
     "dev": "pnpm --filter @handoff/api dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "check:release": "node scripts/check-release.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "argon2",
       "esbuild"
     ]
-  }
+  },
+  "version": "0.1.0"
 }
