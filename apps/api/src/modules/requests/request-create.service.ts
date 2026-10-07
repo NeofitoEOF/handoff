@@ -10,6 +10,8 @@ export async function createRequest(input: {
   dueAt: Date;
   competence?: string;
   instructions?: string;
+  templateVersionId?: string;
+  retifiesRequestId?: string;
 }) {
   return withTenantTransaction(input.tenantId, async (client) => {
     if (input.originSectorId === input.destinationSectorId) {
@@ -37,6 +39,23 @@ export async function createRequest(input: {
       return { kind: "invalid_sector" as const };
     }
 
+    if (input.templateVersionId) {
+      const templateVersion = await client.query(
+        `SELECT 1
+           FROM template_versions tv
+           JOIN templates t ON t.id = tv.template_id
+          WHERE tv.id = $1
+            AND tv.status = 'PUBLISHED'
+            AND t.sector_id = $2
+            AND t.active = true
+          LIMIT 1`,
+        [input.templateVersionId, input.originSectorId],
+      );
+      if (templateVersion.rowCount !== 1) {
+        return { kind: "invalid_template_version" as const };
+      }
+    }
+
     const duplicate = input.competence
       ? await client.query(
           `SELECT 1
@@ -57,10 +76,12 @@ export async function createRequest(input: {
 
     const result = await client.query(
       `INSERT INTO requests
-        (tenant_id, origin_sector_id, destination_sector_id, created_by, title, due_at, status, competence, instructions)
-       VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8)
+        (tenant_id, origin_sector_id, destination_sector_id, created_by, title, due_at, status,
+         competence, instructions, template_version_id, retifies_request_id)
+       VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9, $10)
        RETURNING id, origin_sector_id, destination_sector_id, created_by, assigned_to,
-                 title, due_at, status, competence, instructions, created_at`,
+                 title, due_at, status, competence, instructions, template_version_id,
+                 retifies_request_id, created_at`,
       [
         input.tenantId,
         input.originSectorId,
@@ -70,6 +91,8 @@ export async function createRequest(input: {
         input.dueAt,
         input.competence ?? null,
         input.instructions ?? null,
+        input.templateVersionId ?? null,
+        input.retifiesRequestId ?? null,
       ],
     );
 
