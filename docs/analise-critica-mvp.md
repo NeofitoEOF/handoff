@@ -117,6 +117,23 @@ Cada pergunta derruba ou confirma uma hipótese do MVP; fazer com 5–10 control
 
 **Critério de corte sugerido:** seguir para construção só se pelo menos 3 empresas confirmarem dor recorrente, mostrarem uma tentativa anterior que falhou e aceitarem um piloto pago (mesmo simbólico).
 
+## Pesquisa adicional — falhas operacionais observadas em ferramentas de workflow
+
+Uma busca complementar em avaliações de usuários e documentação oficial reforça que o risco operacional não termina quando o processo sai do e-mail. Os problemas mudam de forma: permissões difíceis de manter, aprovações órfãs, convidados com atrito, fluxos que expiram e regras complexas demais para o usuário configurar.
+
+| Evidência observada | Implicação para o Handoff |
+| --- | --- |
+| Avaliação verificada do Pipefy relata permissões ficando confusas entre departamentos; outras avaliações destacam esforço inicial para configurar workflows complexos ([Capterra, 2026](https://www.capterra.com/p/144848/Pipefy/reviews/)) | Não espalhar regra de acesso em configurações livres: autoridade de origem/destino e maker-checker devem ser regras centrais do produto |
+| Usuários do Smartsheet relatam onboarding relevante e um caso em que resposta de stakeholder externo volta ao proprietário da planilha, não necessariamente a quem opera aquele relacionamento ([G2](https://www.g2.com/products/smartsheet/reviews)) | Responsável operacional deve ser explícito e reatribuível; mensagens e respostas não podem depender de um “owner” técnico do artefato |
+| A Microsoft documenta aprovações abandonadas quando a espera excede 28 dias e recomenda timeout explícito; fluxos em nuvem têm duração máxima e precisam persistir estado em processos longos ([Known issues](https://learn.microsoft.com/en-us/power-automate/approvals-known-issues), [error reference](https://learn.microsoft.com/power-automate/error-reference)) | Solicitação não pode depender de uma execução longa em memória. O estado precisa ser persistente, com vencimento, atraso e escalonamento como estados de negócio |
+| A Microsoft também documenta limitações para convidados em aprovações, inclusive necessidade de licença em determinados cenários ([Known issues](https://learn.microsoft.com/en-us/power-automate/approvals-known-issues)) | O convidado do Handoff deve ser participação limitada à solicitação, sem exigir licença ou membership do tenant; a empresa decide se permite terceiro externo |
+| Power Automate trata explicitamente reatribuição, cancelamento, aprovações sequenciais e aprovação por grupos como cenários comuns ([Approval scenarios](https://learn.microsoft.com/pt-br/power-automate/approvals-howto)) | Reatribuir, cancelar com histórico, substituir aprovador e evitar bloqueio por ausência não são edge cases; precisam nascer como regras |
+| Avaliações recentes do Zeev elogiam centralização/rastreabilidade, mas citam limitações em personalizações avançadas, validações e tabelas ([B2B Stack, 2026](https://www.b2bstack.com.br/product/zeev)) | O diferencial do Handoff deve continuar estreito: validação forte de dados tabulares e regras operacionais prontas, em vez de tentar virar um BPM genérico configurável |
+
+**Conclusão operacional:** o produto não deve competir por “ter mais automações”. A vantagem pode ser oferecer um fluxo opinativo que já saiba lidar com os casos que quebram operações reais: reatribuição sem perda de histórico, prazo do setor, devolução com novo prazo, aprovação por item, retificação sem reabrir fechamento, cancelamento auditado e coleta multi-setor.
+
+Essas conclusões foram incorporadas ao [MVP revisado](mvp-revisado.md) e às **Regras operacionais do fluxo** em [Requisitos técnicos](requisitos-tecnicos.md).
+
 ## Fontes
 
 A maior parte vem de resultados de busca e páginas de avaliação; dados de fornecedores (Treasy, comparativos de concorrentes) têm viés comercial. A página da pesquisa Treasy redirecionou para a home ao ser aberta, então os números dela vêm do trecho indexado.
@@ -141,3 +158,8 @@ A maior parte vem de resultados de busca e páginas de avaliação; dados de for
 - [UsagePricing — FloQast](https://usagepricing.com/blueprint/stack/floqast)
 - [Lenny's Newsletter — lições de uma startup horizontal que fechou](https://www.lennysnewsletter.com/p/lessons-learned-from-a-startup-that)
 - [SaaStr — vertical vs. horizontal](https://www.saastr.com/why-saas-companies-that-sell-outside-of-tech-are-on-fire)
+- [Pipefy — avaliações Capterra 2026](https://www.capterra.com/p/144848/Pipefy/reviews/)
+- [Smartsheet — avaliações G2](https://www.g2.com/products/smartsheet/reviews)
+- [Microsoft Learn — known issues de Approvals](https://learn.microsoft.com/en-us/power-automate/approvals-known-issues)
+- [Microsoft Learn — cenários comuns de aprovação](https://learn.microsoft.com/pt-br/power-automate/approvals-howto)
+- [Microsoft Learn — timeouts e erros de flows](https://learn.microsoft.com/power-automate/error-reference)
