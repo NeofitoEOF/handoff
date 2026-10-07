@@ -145,6 +145,14 @@ rm -f "$audit_file"
 
 if [ "$audit_status" != "200" ]; then
   echo "[e2e] audit verification failed HTTP $audit_status: $audit" >&2
+  echo "[e2e] raw audit rows for tenant $tenant_id" >&2
+  docker compose -f docker-compose.staging.yml exec -T postgres \
+    psql -U handoff_admin -d handoff -P pager=off \
+    -c "SELECT chain_seq, tenant_id, action, entity_type, left(hash,12) AS hash, left(prev_hash,12) AS prev_hash FROM audit_events WHERE tenant_id = '$tenant_id' ORDER BY chain_seq;" >&2 || true
+  echo "[e2e] raw audit rows across tenants" >&2
+  docker compose -f docker-compose.staging.yml exec -T postgres \
+    psql -U handoff_admin -d handoff -P pager=off \
+    -c "SELECT chain_seq, tenant_id, action FROM audit_events ORDER BY tenant_id, chain_seq;" >&2 || true
   exit 1
 fi
 
