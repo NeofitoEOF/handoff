@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "./config.js";
+import { pool } from "./db.js";
 
 const startedAt = process.hrtime.bigint();
 const requestStarted = new WeakMap<FastifyRequest, bigint>();
@@ -63,7 +64,17 @@ export async function registerMetrics(app: FastifyInstance): Promise<void> {
       }
     }
 
+    let databaseUp = 1;
+    try {
+      await pool.query("SELECT 1");
+    } catch {
+      databaseUp = 0;
+    }
+
     const lines = [
+      "# HELP handoff_database_up Database connectivity status (1=up, 0=down).",
+      "# TYPE handoff_database_up gauge",
+      `handoff_database_up ${databaseUp}`,
       "# HELP handoff_process_uptime_seconds Process uptime in seconds.",
       "# TYPE handoff_process_uptime_seconds gauge",
       `handoff_process_uptime_seconds ${Number(process.hrtime.bigint() - startedAt) / 1_000_000_000}`,
