@@ -27,6 +27,7 @@ const envSchema = z.object({
   CLAMAV_HOST: z.string().default("localhost"),
   CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
   CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
+  METRICS_TOKEN: z.string().min(16).optional(),
 });
 
 export const config = envSchema.parse(process.env);
