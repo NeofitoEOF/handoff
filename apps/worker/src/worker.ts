@@ -1,6 +1,7 @@
 import pg from "pg";
 import nodemailer from "nodemailer";
 import { config } from "./config.js";
+import { generatePdf, renderClosureHtml, storePdf } from "./pdf.js";
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: config.DATABASE_URL, max: 5 });
@@ -166,6 +167,92 @@ async function materializeRecurrences(tenantId: string) {
       );
     }
   });
+}
+
+async function processClosureDocuments(tenantId: string) {
+  const claimed = await withTenant(tenantId, async (client) => {
+    const result = await client.query<{
+      id: string;
+      request_id: string;
+      snapshot_id: string;
+      content: Record<string, unknown>;
+      attempts: number;
+    }>(
+      `SELECT cd.id, cd.request_id, cd.snapshot_id, s.content, cd.attempts
+         FROM closure_documents cd
+         JOIN snapshots s ON s.id = cd.snapshot_id
+        WHERE cd.status IN ('PENDING', 'FAILED')
+          AND cd.available_at <= now()
+          AND cd.attempts < 5
+        ORDER BY cd.created_at
+        LIMIT 5
+        FOR UPDATE OF cd SKIP LOCKED`,
+    );
+
+    if (result.rows.length) {
+      await client.query(
+        `UPDATE closure_documents
+            SET status = 'PROCESSING'
+          WHERE id = ANY($1::uuid[])`,
+        [result.rows.map((row) => row.id)],
+      );
+    }
+
+    return result.rows;
+  });
+
+  for (const document of claimed) {
+    try {
+      const html = renderClosureHtml(document.content);
+      const pdf = await generatePdf(html);
+      const stored = await storePdf({
+        tenantId,
+        requestId: document.request_id,
+        pdf,
+      });
+
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE closure_documents
+              SET status = 'READY',
+                  pdf_storage_key = $2,
+                  pdf_sha256 = $3,
+                  attempts = attempts + 1,
+                  generated_at = now(),
+                  last_error = NULL
+            WHERE id = $1`,
+          [document.id, stored.storageKey, stored.sha256],
+        );
+
+        await client.query(
+          `INSERT INTO audit_events
+            (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+           VALUES ($1, NULL, 'CLOSURE_PDF_GENERATED', 'request', $2, $3::jsonb)`,
+          [
+            tenantId,
+            document.request_id,
+            JSON.stringify({
+              closureDocumentId: document.id,
+              sha256: stored.sha256,
+            }),
+          ],
+        );
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await withTenant(tenantId, async (client) => {
+        await client.query(
+          `UPDATE closure_documents
+              SET status = 'FAILED',
+                  attempts = attempts + 1,
+                  last_error = $2,
+                  available_at = now() + make_interval(mins => LEAST(60, (attempts + 1) * 5))
+            WHERE id = $1`,
+          [document.id, message.slice(0, 2000)],
+        );
+      });
+    }
+  }
 }
 
 async function enqueueReminders(tenantId: string) {
@@ -355,6 +442,7 @@ async function tick() {
   );
   for (const tenant of tenants.rows) {
     await materializeRecurrences(tenant.id);
+    await processClosureDocuments(tenant.id);
     await enqueueReminders(tenant.id);
     await processOutbox(tenant.id);
   }
