@@ -187,3 +187,18 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ CI ampliado com build dos apps, build das imagens e `helm lint`
 - 🟡 Segredos via OCI Vault/External Secrets — chart preparado; provisionamento depende do cluster/conta OCI
 - 🟡 OKE, PostgreSQL gerenciado, Object Storage, SMTP e demais serviços OCI — manifests/aplicação preparados; provisionamento da conta cloud é externo ao repositório
+
+
+## Qualidade e aceite
+
+- ✅ Máquina de estados com testes unitários
+- ✅ Isolamento RLS entre tenants com teste em PostgreSQL real
+- ✅ Cadeia de auditoria com teste de integração
+- ✅ Aceite: criar → atribuir → reatribuir preservando SLA
+- ✅ Aceite: maker-checker para usuário presente em dois setores
+- ✅ Aceite: aprovação parcial com item aprovado bloqueado
+- ✅ Aceite: devolução + correção + reenvio + aprovação final
+- ✅ Aceite: fechamento + snapshot + retificação sem reabrir original
+- ✅ Aceite: remoção do responsável → WAITING_REASSIGNMENT preservando prazo
+- ✅ Aceite: alteração de prazo e cancelamento registrados em auditoria
+- ✅ CI verde com migrations, typecheck, testes, build dos apps, imagens Docker e Helm lint
