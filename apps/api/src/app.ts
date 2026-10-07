@@ -17,6 +17,8 @@ import { importRoutes } from "./modules/imports/import.routes.js";
 import { evidenceRoutes } from "./modules/evidence/evidence.routes.js";
 import { identityRoutes } from "./modules/identity/identity.routes.js";
 import { invitationRoutes } from "./modules/identity/invitation.routes.js";
+import { dashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
+import { auditRoutes } from "./modules/audit/audit.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -39,6 +41,8 @@ export async function buildApp() {
 
   await app.register(identityRoutes);
   await app.register(invitationRoutes);
+  await app.register(dashboardRoutes);
+  await app.register(auditRoutes);
   await app.register(sectorRoutes);
   await app.register(requestCreateRoutes);
   await app.register(requestAssignmentRoutes);
