@@ -112,6 +112,7 @@ export async function exportTenantData(input: {
       attachments,
       imports,
       snapshots,
+      comments,
       auditEvents,
     ] = await Promise.all([
       client.query(`SELECT id, name, document, subdomain, active, created_at FROM tenants WHERE id = $1`, [input.tenantId]),
@@ -124,6 +125,7 @@ export async function exportTenantData(input: {
       client.query(`SELECT id, tenant_id, request_id, item_id, uploaded_by, uploaded_guest_link_id, filename, mime_type, size_bytes, sha256, storage_key, status, created_at FROM attachments ORDER BY created_at`),
       client.query(`SELECT id, tenant_id, request_id, uploaded_by, uploaded_guest_link_id, filename, storage_key, sha256, status, total_rows, accepted_rows, rejected_rows, errors, created_at, completed_at FROM imports ORDER BY created_at`),
       client.query(`SELECT * FROM snapshots ORDER BY created_at`),
+      client.query(`SELECT * FROM comments ORDER BY created_at, id`),
       client.query(`SELECT * FROM audit_events ORDER BY created_at, id`),
     ]);
 
@@ -140,6 +142,7 @@ export async function exportTenantData(input: {
       attachments: attachments.rows,
       imports: imports.rows,
       snapshots: snapshots.rows,
+      comments: comments.rows,
       auditEvents: auditEvents.rows,
     };
   });
