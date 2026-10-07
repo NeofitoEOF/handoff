@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   addSectorMember,
   createSector,
+  deactivateSector,
   deactivateSectorMember,
   listSectors,
 } from "./sector.service.js";
@@ -91,6 +92,34 @@ export async function sectorRoutes(app: FastifyInstance): Promise<void> {
             changed: true,
             waitingReassignmentCount: result.waitingReassignmentCount,
           });
+      }
+    },
+  );
+  app.post(
+    "/v1/sectors/:id/deactivate",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = sectorParams.parse(request.params);
+      const result = await deactivateSector({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        sectorId: params.id,
+      });
+
+      switch (result.kind) {
+        case "forbidden":
+          return reply.code(403).send({ message: "Somente Admin da Empresa pode desativar setor." });
+        case "not_found":
+          return reply.code(404).send({ message: "Setor não encontrado." });
+        case "already_inactive":
+          return reply.code(200).send({ changed: false });
+        case "has_pending_requests":
+          return reply.code(409).send({
+            message: "Setor possui solicitações abertas.",
+            pendingCount: result.pendingCount,
+          });
+        case "deactivated":
+          return reply.code(200).send({ changed: true });
       }
     },
   );
