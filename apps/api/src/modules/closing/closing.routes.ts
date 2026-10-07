@@ -1,8 +1,28 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { closeRequest, createRetification } from "./closing.service.js";
+import { closeRequest, createRetification, getClosureDocument } from "./closing.service.js";
 
 export async function closingRoutes(app: FastifyInstance): Promise<void> {
+  app.get(
+    "/v1/requests/:id/closure-document",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      const result = await getClosureDocument({
+        tenantId: request.user.tenantId,
+        requestId: params.id,
+        actorUserId: request.user.sub,
+      });
+
+      if (result.kind === "forbidden_or_not_found") {
+        return reply.code(404).send({ message: "Solicitação não encontrada ou sem acesso." });
+      }
+      if (result.kind === "not_found") {
+        return reply.code(404).send({ message: "PDF de fechamento ainda não foi solicitado." });
+      }
+      return reply.send(result.document);
+    },
+  );
   app.post("/v1/requests/:id/close", { preHandler: app.authenticate }, async (request, reply) => {
     const params = z.object({ id: z.string().uuid() }).parse(request.params);
     const result = await closeRequest({
