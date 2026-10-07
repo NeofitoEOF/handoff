@@ -224,3 +224,58 @@ export async function deactivateSectorMember(input: {
     };
   });
 }
+
+
+export async function deactivateSector(input: {
+  tenantId: string;
+  actorUserId: string;
+  sectorId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await isTenantAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const sector = await client.query<{ id: string; active: boolean }>(
+      `SELECT id, active FROM sectors WHERE id = $1 FOR UPDATE`,
+      [input.sectorId],
+    );
+    const current = sector.rows[0];
+    if (!current) return { kind: "not_found" as const };
+    if (!current.active) return { kind: "already_inactive" as const };
+
+    const pending = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM requests
+        WHERE (origin_sector_id = $1 OR destination_sector_id = $1)
+          AND status NOT IN ('CLOSED', 'CANCELLED')`,
+      [input.sectorId],
+    );
+    const pendingCount = Number(pending.rows[0]?.count ?? 0);
+    if (pendingCount > 0) {
+      return { kind: "has_pending_requests" as const, pendingCount };
+    }
+
+    await client.query(
+      `UPDATE sectors SET active = false WHERE id = $1`,
+      [input.sectorId],
+    );
+    await client.query(
+      `UPDATE memberships SET active = false WHERE sector_id = $1`,
+      [input.sectorId],
+    );
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, 'SECTOR_DEACTIVATED', 'sector', $3, $4::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        input.sectorId,
+        JSON.stringify({ active: false }),
+      ],
+    );
+
+    return { kind: "deactivated" as const };
+  });
+}
