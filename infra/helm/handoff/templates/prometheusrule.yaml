@@ -40,4 +40,22 @@ spec:
           annotations:
             summary: Taxa elevada de HTTP 5xx no Handoff
             description: Mais de {{ mul .Values.observability.prometheusRule.high5xxRatio 100 }}% das requisições estão retornando 5xx.
+
+        - alert: HandoffDeadLettersPresent
+          expr: handoff_outbox_dead_letters > 0
+          for: {{ .Values.observability.prometheusRule.deadLetterFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Itens esgotaram retries no Handoff
+            description: A fila {{ "{{ $labels.queue }}" }} possui {{ "{{ $value }}" }} item(ns) em dead-letter e requer ação operacional.
+
+        - alert: HandoffOutboxBacklogOld
+          expr: handoff_outbox_oldest_pending_seconds > {{ .Values.observability.prometheusRule.oldestPendingSeconds }}
+          for: {{ .Values.observability.prometheusRule.oldestPendingFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Backlog antigo no Handoff
+            description: A fila {{ "{{ $labels.queue }}" }} possui item retryable há mais de {{ .Values.observability.prometheusRule.oldestPendingSeconds }} segundos.
 {{- end }}
