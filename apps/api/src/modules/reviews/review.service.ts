@@ -1,5 +1,5 @@
 import { withTenantTransaction } from "../../db.js";
-import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
+import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
 
 async function canReview(
   client: import("../../db.js").DbClient,
@@ -172,6 +172,14 @@ export async function approveItem(input: {
       dedupeKey: `request:${input.requestId}:item:${input.itemId}:approved`,
     });
 
+    await enqueueTeams(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      title: "Item aprovado",
+      message: "Um item da solicitação foi aprovado.",
+      dedupeKey: `item-approved-teams:${input.requestId}:${input.itemId}`,
+    });
+
     if (requestStatus === "APPROVED") {
       const creator = await client.query<{ created_by: string; email: string }>(
         `SELECT r.created_by, u.email
@@ -273,6 +281,14 @@ export async function returnItem(input: {
       subject: "[Handoff] Item devolvido para correção",
       message: `Um item foi devolvido. Motivo: ${input.comment}. Novo prazo: ${input.correctionDueAt.toISOString()}.`,
       dedupeKey: `request:${input.requestId}:item:${input.itemId}:returned:${input.correctionDueAt.toISOString()}`,
+    });
+
+    await enqueueTeams(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      title: "Item devolvido para correção",
+      message: `${input.comment} · novo prazo ${input.correctionDueAt.toISOString()}`,
+      dedupeKey: `item-returned-teams:${input.requestId}:${input.itemId}:${input.correctionDueAt.toISOString()}`,
     });
 
     await client.query(
