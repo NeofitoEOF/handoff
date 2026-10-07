@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,18 @@ function sqlIdentifier(value: string): string {
   return '"' + value.replaceAll('"', '""') + '"';
 }
 
+function checksum(sql: string): string {
+  return createHash("sha256").update(sql, "utf8").digest("hex");
+}
+
+const legacyMigrationAliases: Readonly<Record<string, string>> = {
+  "0026_public_api_webhooks.sql": "0027_public_api_webhooks.sql",
+  "0027_lgpd_retention.sql": "0028_lgpd_retention.sql",
+  "0028_lgpd_processing_register.sql": "0029_lgpd_processing_register.sql",
+  "0029_audit_anchors.sql": "0030_audit_anchors.sql",
+  "0030_identity_token_scope.sql": "0031_identity_token_scope.sql",
+};
+
 const client = new Client({ connectionString: migrationUrl });
 await client.connect();
 
@@ -45,9 +58,41 @@ try {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       filename text PRIMARY KEY,
+      checksum text,
       applied_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+
+  await client.query(
+    "ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text",
+  );
+
+  for (const [legacyFilename, currentFilename] of Object.entries(legacyMigrationAliases)) {
+    const legacy = await client.query(
+      "SELECT 1 FROM schema_migrations WHERE filename = $1",
+      [legacyFilename],
+    );
+    if (legacy.rowCount !== 1) continue;
+
+    const current = await client.query(
+      "SELECT 1 FROM schema_migrations WHERE filename = $1",
+      [currentFilename],
+    );
+
+    if (current.rowCount === 1) {
+      throw new Error(
+        `Migration history contains both legacy and current filenames: ${legacyFilename} / ${currentFilename}.`,
+      );
+    }
+
+    process.stdout.write(
+      `[migrate] normalizing legacy migration name ${legacyFilename} -> ${currentFilename}\n`,
+    );
+    await client.query(
+      "UPDATE schema_migrations SET filename = $2 WHERE filename = $1",
+      [legacyFilename, currentFilename],
+    );
+  }
 
   const migrationsDir = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -57,21 +102,61 @@ try {
     .filter((name) => /^\d+.*\.sql$/.test(name))
     .sort();
 
+  const sources = new Map<string, { sql: string; checksum: string }>();
   for (const filename of files) {
-    const applied = await client.query(
-      "SELECT 1 FROM schema_migrations WHERE filename = $1",
-      [filename],
-    );
-    if (applied.rowCount === 1) continue;
-
     const sql = await fs.readFile(path.join(migrationsDir, filename), "utf8");
+    sources.set(filename, { sql, checksum: checksum(sql) });
+  }
+
+  const history = await client.query<{ filename: string; checksum: string | null }>(
+    "SELECT filename, checksum FROM schema_migrations ORDER BY filename",
+  );
+
+  for (const applied of history.rows) {
+    const source = sources.get(applied.filename);
+    if (!source) {
+      throw new Error(
+        `Applied migration ${applied.filename} is missing from the application image.`,
+      );
+    }
+
+    if (applied.checksum === null) {
+      process.stdout.write(
+        `[migrate] recording checksum for existing migration ${applied.filename}\n`,
+      );
+      await client.query(
+        "UPDATE schema_migrations SET checksum = $2 WHERE filename = $1",
+        [applied.filename, source.checksum],
+      );
+      continue;
+    }
+
+    if (applied.checksum !== source.checksum) {
+      throw new Error(
+        `Migration checksum mismatch for ${applied.filename}. Applied migrations are immutable; create a new migration instead of editing an old one.`,
+      );
+    }
+  }
+
+  const alreadyApplied = new Set(history.rows.map((row) => row.filename));
+
+  for (const filename of files) {
+    if (alreadyApplied.has(filename)) continue;
+
+    const source = sources.get(filename);
+    if (!source) throw new Error(`Migration source missing for ${filename}.`);
+
     process.stdout.write(`[migrate] applying ${filename}\n`);
-    await client.query(sql);
+    await client.query(source.sql);
     await client.query(
-      "INSERT INTO schema_migrations (filename) VALUES ($1)",
-      [filename],
+      "INSERT INTO schema_migrations (filename, checksum) VALUES ($1, $2)",
+      [filename, source.checksum],
     );
   }
+
+  await client.query(
+    "ALTER TABLE schema_migrations ALTER COLUMN checksum SET NOT NULL",
+  );
 
   const databaseResult = await client.query<{ name: string }>(
     "SELECT current_database() AS name",
