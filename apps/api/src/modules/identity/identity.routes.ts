@@ -8,6 +8,7 @@ import {
 } from "./identity.service.js";
 import { confirmMfa, disableMfa, setupMfa, verifyMfaForLogin } from "./mfa.service.js";
 import { consumePasswordReset, createPasswordReset } from "./password-reset.service.js";
+import { clearLoginFailures, getLoginLock, recordLoginFailure } from "./login-security.service.js";
 import { config } from "../../config.js";
 
 const refreshCookieName = "handoff_refresh";
@@ -31,10 +32,21 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
       otp: z.string().regex(/^\d{6}$/).optional(),
     }).parse(request.body);
 
+    const lock = await getLoginLock({ tenantId: body.tenantId, email: body.email });
+    if (lock.locked) {
+      return reply.code(429).send({
+        message: "Muitas tentativas inválidas. Tente novamente mais tarde.",
+        lockedUntil: lock.until,
+      });
+    }
+
     const auth = await authenticatePassword(body);
     if (auth.kind !== "ok") {
+      await recordLoginFailure({ tenantId: body.tenantId, email: body.email });
       return reply.code(401).send({ message: "Credenciais inválidas." });
     }
+
+    await clearLoginFailures({ tenantId: body.tenantId, email: body.email });
 
     const mfa = await verifyMfaForLogin(auth.user.id, body.otp);
     if (mfa.kind === "required") {
