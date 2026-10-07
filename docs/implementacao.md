@@ -185,8 +185,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Endpoint de métricas protegido por Bearer token em produção
 - ✅ ServiceMonitor opcional no Helm
 - ✅ CI ampliado com build dos apps, build das imagens e `helm lint`
-- 🟡 Segredos via OCI Vault/External Secrets — chart preparado; provisionamento depende do cluster/conta OCI
-- 🟡 OKE, PostgreSQL gerenciado, Object Storage, SMTP e demais serviços OCI — manifests/aplicação preparados; provisionamento da conta cloud é externo ao repositório
+- ✅ External Secrets parametrizado no Helm + rotação documentada; aplicação no OCI Vault depende apenas do ambiente
+- ✅ IaC OCI validado: OKE, Object Storage, Vault e Database with PostgreSQL; apply depende apenas de OCIDs/credenciais do ambiente
 
 
 ## Qualidade e aceite
@@ -213,7 +213,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Runbook de incidente, rollback e recuperação
 - ✅ Estratégia de rollback por tags/SHA imutáveis sem rollback destrutivo de migration
 - ✅ RPO/RTO documentados: 15 min / 4 h
-- 🟡 PITR e backup gerenciado de produção — procedimento definido; habilitação depende do PostgreSQL gerenciado/conta OCI
+- ✅ PITR configurado no Terraform do OCI PostgreSQL; ativação efetiva ocorre no terraform apply do ambiente
 
 
 ## Segurança de pipeline e cluster
@@ -227,4 +227,20 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Entrada API/web limitada ao ingress controller no chart
 - ✅ Containers non-root, root filesystem read-only e capabilities removidas
 - ✅ Checklist de segurança documentado
-- 🟡 WAF, rotação via OCI Vault e DAST em staging dependem do ambiente cloud/staging
+- 🟡 WAF depende do ambiente OCI; rotação/External Secrets e DAST já estão automatizados e aguardam somente configuração do ambiente
+
+
+## IaC OCI
+
+- ✅ Provider OCI 8.29 parametrizado
+- ✅ Home region provider para operações IAM do OKE
+- ✅ Módulo oficial OKE 5.5.1
+- ✅ Worker pools parametrizáveis
+- ✅ Object Storage privado com versionamento
+- ✅ OCI Vault + chave AES
+- ✅ OCI Database with PostgreSQL
+- ✅ PITR parametrizado para PostgreSQL
+- ✅ Terraform fmt no CI
+- ✅ Terraform init/validate no CI
+- ✅ IaC validado com sucesso no pipeline
+- 🟡 Terraform apply real depende de tenancy/compartment/subnet/credenciais OCI
