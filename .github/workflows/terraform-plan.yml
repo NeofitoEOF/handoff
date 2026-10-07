@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   plan:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.OCI_TERRAFORM_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment: staging
     defaults:
@@ -31,6 +32,8 @@ jobs:
       TF_VAR_postgres_db_version: ${{ vars.OCI_POSTGRES_VERSION }}
       TF_VAR_postgres_system_type: ${{ vars.OCI_POSTGRES_SYSTEM_TYPE }}
       TF_VAR_postgres_storage_system_type: ${{ vars.OCI_POSTGRES_STORAGE_SYSTEM_TYPE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.OCI_STATE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_STATE_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +54,17 @@ jobs:
             "$OCI_USER_OCID" "$OCI_FINGERPRINT" "$TF_VAR_tenancy_id" "$TF_VAR_region" "$HOME" > "$HOME/.oci/config"
 
       - name: Terraform init
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.OCI_STATE_BUCKET }}" \
+            -backend-config="key=handoff/staging/terraform.tfstate" \
+            -backend-config="region=${{ vars.OCI_REGION }}" \
+            -backend-config="endpoint=https://${{ vars.OCI_OBJECT_STORAGE_NAMESPACE }}.compat.objectstorage.${{ vars.OCI_REGION }}.oraclecloud.com" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_requesting_account_id=true" \
+            -backend-config="skip_metadata_api_check=true" \
+            -backend-config="use_path_style=true"
       - name: Terraform validate
         run: terraform validate
       - name: Terraform plan
