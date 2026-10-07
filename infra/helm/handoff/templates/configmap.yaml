@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "handoff.name" . }}-config
+  labels:
+    {{- include "handoff.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.config.NODE_ENV | quote }}
+  PORT: {{ .Values.config.PORT | quote }}
+  APP_BASE_URL: {{ printf "https://%s" .Values.domain | quote }}
+  WEB_ORIGINS: {{ printf "https://%s,https://*.%s" .Values.domain .Values.domain | quote }}
+  OBJECT_STORAGE_REGION: {{ .Values.config.OBJECT_STORAGE_REGION | quote }}
+  OBJECT_STORAGE_BUCKET: {{ .Values.config.OBJECT_STORAGE_BUCKET | quote }}
+  OBJECT_STORAGE_FORCE_PATH_STYLE: {{ .Values.config.OBJECT_STORAGE_FORCE_PATH_STYLE | quote }}
+  CLAMAV_ENABLED: {{ .Values.config.CLAMAV_ENABLED | quote }}
+  CLAMAV_HOST: {{ .Values.config.CLAMAV_HOST | quote }}
+  CLAMAV_PORT: {{ .Values.config.CLAMAV_PORT | quote }}
+  CLAMAV_TIMEOUT_MS: {{ .Values.config.CLAMAV_TIMEOUT_MS | quote }}
+  EMAIL_TRANSPORT: {{ .Values.config.EMAIL_TRANSPORT | quote }}
+  SMTP_PORT: {{ .Values.config.SMTP_PORT | quote }}
+  SMTP_SECURE: {{ .Values.config.SMTP_SECURE | quote }}
+  WORKER_POLL_MS: {{ .Values.config.WORKER_POLL_MS | quote }}
+  GOTENBERG_URL: {{ .Values.config.GOTENBERG_URL | quote }}
