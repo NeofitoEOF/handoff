@@ -17,7 +17,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Refresh token rotativo
 - ✅ Login/senha + Argon2id
 - ✅ MFA/TOTP com segredo cifrado
-- ✅ Recuperação de senha backend; envio por e-mail pendente
+- ✅ Recuperação de senha com entrega por e-mail via outbox
 
 ## Multi-tenant e empresa
 
@@ -40,7 +40,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Remover/inativar membro
 - ✅ Impedir remoção do último Gestor
 - ✅ Desativar setor somente sem pendências abertas
-- 🟡 Convite implementado; envio por e-mail pendente
+- ✅ Convite com entrega por e-mail via outbox
 
 ## Solicitações
 
@@ -62,15 +62,15 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Cancelamento com motivo
 - ✅ Retificação de solicitação fechada
 - ✅ Coleta/campanha multi-setor
-- 🟡 Recorrência configurável; materialização automática pendente
+- ✅ Recorrência configurável + materialização automática idempotente no worker
 
 ## Modelos
 
 - ✅ Templates
 - ✅ Versionamento imutável de template
 - ✅ Campos e validações básicas
-- ⏳ Biblioteca do fluxo piloto
-- ⏳ Criar modelo a partir de planilha
+- ✅ Biblioteca inicial de modelos do fluxo piloto
+- ✅ Criar modelo a partir de XLSX com inferência de campos
 
 ## Preenchimento
 
@@ -109,9 +109,9 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 
 ## Notificações, painel e integrações
 
-- ⏳ E-mail transacional
-- ⏳ Lembretes de prazo
-- ⏳ Escalonamento de atraso
+- ✅ E-mail transacional via outbox + worker SMTP/log
+- ✅ Lembretes de prazo pelo worker
+- ✅ Escalonamento de atraso e solicitações sem responsável
 - ✅ Caixa de entrada backend
 - ✅ Indicadores por setor backend
 - ⏳ Login Microsoft/Entra ID
