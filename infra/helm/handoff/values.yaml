@@ -77,3 +77,43 @@ observability:
   serviceMonitor:
     enabled: false
     interval: 30s
+
+
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: oci-vault
+  keys:
+    - secretKey: DATABASE_URL
+      remoteKey: handoff/DATABASE_URL
+    - secretKey: MIGRATION_DATABASE_URL
+      remoteKey: handoff/MIGRATION_DATABASE_URL
+    - secretKey: APP_DATABASE_USER
+      remoteKey: handoff/APP_DATABASE_USER
+    - secretKey: APP_DATABASE_PASSWORD
+      remoteKey: handoff/APP_DATABASE_PASSWORD
+    - secretKey: JWT_SECRET
+      remoteKey: handoff/JWT_SECRET
+    - secretKey: MFA_ENCRYPTION_KEY
+      remoteKey: handoff/MFA_ENCRYPTION_KEY
+    - secretKey: PLATFORM_ADMIN_KEY
+      remoteKey: handoff/PLATFORM_ADMIN_KEY
+    - secretKey: INTEGRATION_ENCRYPTION_KEY
+      remoteKey: handoff/INTEGRATION_ENCRYPTION_KEY
+    - secretKey: OBJECT_STORAGE_ENDPOINT
+      remoteKey: handoff/OBJECT_STORAGE_ENDPOINT
+    - secretKey: OBJECT_STORAGE_ACCESS_KEY
+      remoteKey: handoff/OBJECT_STORAGE_ACCESS_KEY
+    - secretKey: OBJECT_STORAGE_SECRET_KEY
+      remoteKey: handoff/OBJECT_STORAGE_SECRET_KEY
+    - secretKey: METRICS_TOKEN
+      remoteKey: handoff/METRICS_TOKEN
+
+networkPolicy:
+  ingress:
+    namespaceSelector:
+      kubernetes.io/metadata.name: ingress-nginx
+    podSelector:
+      app.kubernetes.io/name: ingress-nginx
