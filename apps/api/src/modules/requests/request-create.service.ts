@@ -1,6 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { isActiveSectorMember } from "../../authorization.js";
-import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
+import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
 
 export async function createRequest(input: {
   tenantId: string;
@@ -145,6 +145,14 @@ export async function createRequest(input: {
         message: input.title,
       });
     }
+
+    await enqueueTeams(client, {
+      tenantId: input.tenantId,
+      requestId: created.id,
+      title: "Nova solicitação",
+      message: `${input.title} · prazo ${input.dueAt.toISOString()}`,
+      dedupeKey: `request-opened-teams:${created.id}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
