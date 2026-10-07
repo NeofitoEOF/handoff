@@ -287,7 +287,8 @@ async function processClosureDocuments(tenantId: string) {
         ORDER BY cd.created_at
         LIMIT 5
         FOR UPDATE OF cd SKIP LOCKED`,
-    , [config.WORKER_PROCESSING_LEASE_MINUTES]);
+      [config.WORKER_PROCESSING_LEASE_MINUTES],
+    );
 
     if (result.rows.length) {
       await client.query(
