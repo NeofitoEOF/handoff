@@ -6,6 +6,8 @@ export async function getInbox(input: {
   tenantId: string;
   userId: string;
   view: InboxView;
+  limit?: number;
+  offset?: number;
 }) {
   return withTenantTransaction(input.tenantId, async (client) => {
     const result = await client.query(
@@ -39,8 +41,10 @@ export async function getInbox(input: {
       END
       ORDER BY
         (r.due_at < now() AND r.status NOT IN ('CLOSED', 'CANCELLED')) DESC,
-        r.due_at ASC`,
-      [input.userId, input.view],
+        r.due_at ASC,
+        r.id ASC
+      LIMIT $3 OFFSET $4`,
+      [input.userId, input.view, input.limit ?? 50, input.offset ?? 0],
     );
 
     return result.rows;
