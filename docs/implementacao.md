@@ -82,7 +82,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Anexos/evidências com SHA-256 e Object Storage
 - ✅ Upload XLSX
 - ✅ Validação linha a linha + confirmação explícita
-- ⏳ Quarentena/antivírus de arquivo
+- ✅ Antivírus ClamAV obrigatório antes de persistir/liberar arquivo
 
 ## Revisão e fechamento
 
@@ -92,7 +92,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Novo prazo de correção por item
 - ✅ Maker-checker por pessoa/item
 - ✅ Snapshot imutável com SHA-256
-- ⏳ PDF de fechamento
+- ✅ PDF de fechamento assíncrono com Gotenberg + SHA-256 + download pré-assinado
 - ✅ Retificação vinculada ao fechamento anterior
 
 ## Auditoria
