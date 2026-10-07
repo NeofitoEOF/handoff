@@ -85,3 +85,21 @@ variable "postgres_pitr_days" {
   type    = number
   default = 7
 }
+
+
+variable "waf_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "waf_load_balancer_id" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "OCI Load Balancer OCID protected by WAF when waf_enabled=true."
+}
+
+variable "waf_requests_per_minute" {
+  type    = number
+  default = 600
+}
