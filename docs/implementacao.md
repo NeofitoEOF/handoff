@@ -26,9 +26,9 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Vínculo usuário × tenant com papel ADMIN/AUDITOR/USER
 - ✅ RLS nas tabelas tenant-scoped criadas até aqui
 - 🟡 Teste automatizado de vazamento entre tenants — RLS pronto, suíte E2E pendente
-- ⏳ Cadastro assistido da empresa
-- ⏳ Suspensão/inativação de tenant
-- ⏳ Exportação completa do tenant
+- ✅ Cadastro assistido da empresa via endpoint interno de provisionamento
+- ✅ Suspensão/inativação de tenant com revogação de sessões
+- ✅ Exportação completa do tenant
 
 ## Setores e usuários
 
@@ -39,7 +39,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Somente Admin pode nomear Gestor
 - ✅ Remover/inativar membro
 - ✅ Impedir remoção do último Gestor
-- ⏳ Desativar setor com tratamento de pendências
+- ✅ Desativar setor somente sem pendências abertas
 - 🟡 Convite implementado; envio por e-mail pendente
 
 ## Solicitações
