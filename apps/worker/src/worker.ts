@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { generatePdf, renderClosureHtml, storePdf } from "./pdf.js";
 import { decryptTeamsWebhook, sendTeamsWebhook } from "./teams.js";
 import { decryptWebhookSecret, sendSignedWebhook } from "./webhook.js";
+import { storeAuditAnchor } from "./audit-anchor.js";
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: config.DATABASE_URL, max: 5 });
@@ -57,6 +58,98 @@ function nextOccurrence(date: Date, frequency: "WEEKLY" | "MONTHLY"): Date {
     next.setUTCMonth(next.getUTCMonth() + 1);
   }
   return next;
+}
+
+function previousUtcDate(): string {
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - 1,
+  ));
+  return yesterday.toISOString().slice(0, 10);
+}
+
+async function processAuditAnchor(tenantId: string) {
+  const anchorDate = previousUtcDate();
+
+  await withTenant(tenantId, async (client) => {
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+      [`audit-anchor:${tenantId}:${anchorDate}`],
+    );
+
+    const existing = await client.query(
+      `SELECT 1
+         FROM audit_anchors
+        WHERE anchor_date = $1::date
+        LIMIT 1`,
+      [anchorDate],
+    );
+    if (existing.rowCount === 1) return;
+
+    const chain = await client.query<{ chain_seq: string; hash: string }>(
+      `SELECT chain_seq::text, hash
+         FROM audit_events
+        WHERE created_at < ($1::date + interval '1 day')
+        ORDER BY chain_seq DESC
+        LIMIT 1`,
+      [anchorDate],
+    );
+    const latest = chain.rows[0];
+    if (!latest) return;
+
+    const previous = await client.query<{ manifest_sha256: string }>(
+      `SELECT manifest_sha256
+         FROM audit_anchors
+        WHERE anchor_date < $1::date
+        ORDER BY anchor_date DESC
+        LIMIT 1`,
+      [anchorDate],
+    );
+
+    const stored = await storeAuditAnchor({
+      tenantId,
+      anchorDate,
+      chainSeq: Number(latest.chain_seq),
+      chainHash: latest.hash,
+      previousAnchorSha256: previous.rows[0]?.manifest_sha256 ?? null,
+    });
+
+    const inserted = await client.query<{ id: string }>(
+      `INSERT INTO audit_anchors
+        (tenant_id, anchor_date, chain_seq, chain_hash, manifest_sha256,
+         storage_bucket, storage_key)
+       VALUES ($1, $2::date, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        tenantId,
+        anchorDate,
+        Number(latest.chain_seq),
+        latest.hash,
+        stored.manifestSha256,
+        stored.bucket,
+        stored.key,
+      ],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, NULL, 'AUDIT_CHAIN_ANCHORED', 'audit_anchor', $2, $3::jsonb)`,
+      [
+        tenantId,
+        inserted.rows[0]!.id,
+        JSON.stringify({
+          anchorDate,
+          chainSeq: Number(latest.chain_seq),
+          chainHash: latest.hash,
+          manifestSha256: stored.manifestSha256,
+          storageKey: stored.key,
+        }),
+      ],
+    );
+  });
 }
 
 async function materializeRecurrences(tenantId: string) {
@@ -633,6 +726,7 @@ async function tick() {
     `SELECT id FROM tenants WHERE active = true ORDER BY id`,
   );
   for (const tenant of tenants.rows) {
+    await processAuditAnchor(tenant.id);
     await materializeRecurrences(tenant.id);
     await processClosureDocuments(tenant.id);
     await processTeamsOutbox(tenant.id);
