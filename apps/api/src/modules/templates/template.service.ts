@@ -169,3 +169,97 @@ export async function listTemplates(input: {
     return { kind: "ok" as const, templates: result.rows };
   });
 }
+
+
+export async function getTemplateDetail(input: {
+  tenantId: string;
+  actorUserId: string;
+  templateId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const template = await client.query<{
+      id: string;
+      sector_id: string;
+      name: string;
+      description: string | null;
+      active: boolean;
+    }>(
+      `SELECT id, sector_id, name, description, active
+         FROM templates
+        WHERE id = $1`,
+      [input.templateId],
+    );
+    const current = template.rows[0];
+    if (!current) return { kind: "not_found" as const };
+
+    const access = await client.query(
+      `SELECT 1 FROM memberships
+        WHERE sector_id = $1 AND user_id = $2 AND active = true LIMIT 1`,
+      [current.sector_id, input.actorUserId],
+    );
+    if (access.rowCount !== 1) return { kind: "forbidden" as const };
+
+    const versions = await client.query(
+      `SELECT id, version, schema_json, status, created_by, created_at, published_at
+         FROM template_versions
+        WHERE template_id = $1
+        ORDER BY version DESC`,
+      [input.templateId],
+    );
+
+    return { kind: "ok" as const, template: current, versions: versions.rows };
+  });
+}
+
+export async function updateDraftTemplateVersion(input: {
+  tenantId: string;
+  actorUserId: string;
+  templateId: string;
+  versionId: string;
+  schema: TemplateSchema;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const template = await client.query<{ sector_id: string }>(
+      `SELECT sector_id FROM templates WHERE id = $1`,
+      [input.templateId],
+    );
+    const current = template.rows[0];
+    if (!current) return { kind: "not_found" as const };
+    if (!(await isSectorManager(client, current.sector_id, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const version = await client.query<{ status: string }>(
+      `SELECT status
+         FROM template_versions
+        WHERE id = $1 AND template_id = $2
+        FOR UPDATE`,
+      [input.versionId, input.templateId],
+    );
+    const draft = version.rows[0];
+    if (!draft) return { kind: "version_not_found" as const };
+    if (draft.status !== "DRAFT") return { kind: "immutable" as const };
+
+    const result = await client.query(
+      `UPDATE template_versions
+          SET schema_json = $3::jsonb
+        WHERE id = $1 AND template_id = $2
+       RETURNING id, version, schema_json, status`,
+      [input.versionId, input.templateId, JSON.stringify(input.schema)],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, 'TEMPLATE_DRAFT_UPDATED', 'template_version', $3, $4::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        input.versionId,
+        JSON.stringify({ fieldCount: input.schema.fields.length }),
+      ],
+    );
+
+    return { kind: "updated" as const, version: result.rows[0] };
+  });
+}
