@@ -51,6 +51,22 @@ export async function reassignRequest(input: ReassignRequestInput) {
       return { kind: "no_change" as const };
     }
 
+    const actorPermission = await client.query(
+      `SELECT 1
+         FROM memberships m
+         JOIN requests r ON r.destination_sector_id = m.sector_id
+        WHERE r.id = $1
+          AND m.user_id = $2
+          AND m.role = 'MANAGER'
+          AND m.active = true
+        LIMIT 1`,
+      [input.requestId, input.actorUserId],
+    );
+
+    if (actorPermission.rowCount !== 1) {
+      return { kind: "forbidden" as const };
+    }
+
     const membership = await client.query(
       `SELECT 1
          FROM memberships m
