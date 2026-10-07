@@ -11,6 +11,11 @@ export type TemplateSchema = {
     max?: number | undefined;
     regex?: string | undefined;
     options?: string[] | undefined;
+    calculation?:
+      | { op: "ADD" | "SUBTRACT" | "MULTIPLY"; fields: string[] }
+      | { op: "PERCENT"; valueField: string; percentField: string }
+      | { op: "COLUMN_SUM"; field: string }
+      | undefined;
   }>;
 };
 
