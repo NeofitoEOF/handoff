@@ -35,6 +35,8 @@ export async function requestCreateRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(403).send({ message: "Usuário não pertence ao setor de origem." });
       case "invalid_sector":
         return reply.code(422).send({ message: "Setor de origem ou destino é inválido/inativo." });
+      case "invalid_template":
+        return reply.code(422).send({ message: "A versão do modelo deve estar publicada e pertencer ao setor de origem." });
       case "invalid_template_version":
         return reply.code(422).send({ message: "Versão de modelo inválida ou não publicada para o setor de origem." });
       case "duplicate_competence":
