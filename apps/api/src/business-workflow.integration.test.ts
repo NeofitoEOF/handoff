@@ -99,7 +99,7 @@ suite("business workflow acceptance", () => {
        VALUES
          ($1, $2, $4, 'MEMBER'),
          ($1, $2, $5, 'APPROVER'),
-         ($1, $2, $7, 'APPROVER'),
+         ($1, $2, $8, 'APPROVER'),
          ($1, $3, $6, 'MANAGER'),
          ($1, $3, $7, 'MEMBER'),
          ($1, $3, $8, 'MEMBER')`,
