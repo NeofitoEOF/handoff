@@ -42,7 +42,7 @@ export function renderClosureHtml(snapshot: Record<string, unknown>): string {
         <td>${escapeHtml(item.item_key)}</td>
         <td><pre>${renderValue(data)}</pre></td>
         <td>${escapeHtml(item.status)}</td>
-        <td>${escapeHtml(item.submitted_by)}</td>
+        <td>${escapeHtml(item.submitted_guest_email ?? item.submitted_by)}</td>
         <td>${escapeHtml(item.reviewed_by)}</td>
       </tr>`;
   }).join("");
