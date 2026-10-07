@@ -6,8 +6,29 @@ on:
     branches: [main]
 
 jobs:
-  api:
+  verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: handoff_admin
+          POSTGRES_PASSWORD: handoff_admin
+          POSTGRES_DB: handoff
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U handoff_admin -d handoff"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://handoff_app:handoff_app@localhost:5432/handoff
+      MIGRATION_DATABASE_URL: postgres://handoff_admin:handoff_admin@localhost:5432/handoff
+      APP_DATABASE_USER: handoff_app
+      APP_DATABASE_PASSWORD: handoff_app
+
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,5 +38,6 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @handoff/api migrate
       - run: pnpm -r typecheck
       - run: pnpm -r test
