@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager } from "../../authorization.js";
 import { enqueueEmail } from "../notifications/notification.service.js";
+import { config } from "../../config.js";
 
 function hash(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -66,6 +67,15 @@ export async function createGuestLink(input: {
        RETURNING id`,
       [input.tenantId, input.requestId, input.email, tokenHash, input.actorUserId, request.due_at],
     );
+
+    await enqueueEmail(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      recipientEmail: input.email,
+      subject: "[Handoff] Solicitação para responder",
+      bodyText: `Você recebeu uma solicitação. Acesse ${config.APP_BASE_URL}/guest?token=${encodeURIComponent(token)} até ${request.due_at.toISOString()}.`,
+      dedupeKey: `guest-link:${created.rows[0]!.id}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
