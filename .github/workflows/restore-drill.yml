@@ -46,9 +46,8 @@ jobs:
 
       - name: Create backup
         run: |
-          docker run --rm --network host             -e PGPASSWORD=handoff_admin postgres:16-alpine             pg_dump -h 127.0.0.1 -U handoff_admin -d handoff -Fc -f /tmp/handoff.dump
-          # The file is inside the ephemeral container above, so produce the archive through stdout.
-          docker run --rm --network host             -e PGPASSWORD=handoff_admin postgres:16-alpine             pg_dump -h 127.0.0.1 -U handoff_admin -d handoff -Fc > /tmp/handoff.dump
+          docker run --rm --network host -e PGPASSWORD=handoff_admin postgres:16-alpine \
+            pg_dump -h 127.0.0.1 -U handoff_admin -d handoff -Fc > /tmp/handoff.dump
           test -s /tmp/handoff.dump
 
       - name: Create restore target
