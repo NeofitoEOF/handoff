@@ -70,7 +70,7 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
 
     const rotated = await rotateRefreshSession({
       token,
-      userAgent: request.headers["user-agent"],
+      ...(request.headers["user-agent"] ? { userAgent: request.headers["user-agent"] } : {}),
       ip: request.ip,
     });
 
