@@ -1,0 +1,37 @@
+name: Deployment Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "API base URL, e.g. https://api.staging.example.com"
+        required: true
+        type: string
+      web_url:
+        description: "Web base URL"
+        required: true
+        type: string
+  schedule:
+    - cron: "29 9 * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || (vars.STAGING_API_URL != '' && vars.STAGING_WEB_URL != '') }}
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.api_url || vars.STAGING_API_URL }}
+      WEB_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.web_url || vars.STAGING_WEB_URL }}
+      SMOKE_SUBDOMAIN: ${{ vars.STAGING_SMOKE_SUBDOMAIN }}
+      SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
+      SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+      SMOKE_OTP: ${{ secrets.STAGING_SMOKE_OTP }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke deployed environment
+        run: sh scripts/smoke-deploy.sh
