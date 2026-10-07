@@ -338,3 +338,14 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Alerta de taxa de HTTP 5xx sustentada
 - ✅ SLOs e ações operacionais documentados
 - ✅ Helm lint, typecheck, testes, E2E local, CodeQL e Trivy verdes no mesmo HEAD
+
+
+## Segurança de migrations
+
+- ✅ Prefixos de migration validados no CI
+- ✅ Sequência 0001..0031 sem duplicidade
+- ✅ SQL destrutivo bloqueado por padrão
+- ✅ Exceção destrutiva exige justificativa explícita dentro da migration
+- ✅ Invalidação de tokens legados documentada como exceção de segurança
+- ✅ Guard validado no CI
+- ✅ Migrations aplicadas + E2E local verdes após renumeração
