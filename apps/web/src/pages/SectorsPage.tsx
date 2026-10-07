@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 
 type Sector = {
@@ -70,7 +71,7 @@ export function SectorsPage() {
           <tbody>
             {sectors.data?.data.map((sector) => (
               <tr key={sector.id}>
-                <td>{sector.name}</td>
+                <td><Link className="text-link" to={`/sectors/${sector.id}`}>{sector.name}</Link></td>
                 <td>{sector.active ? "Ativo" : "Inativo"}</td>
                 <td>
                   {sector.active && (
