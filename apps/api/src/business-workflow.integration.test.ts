@@ -29,6 +29,8 @@ suite("business workflow acceptance", () => {
   let closeRequest: typeof import("./modules/closing/closing.service.js").closeRequest;
   let createRetification: typeof import("./modules/closing/closing.service.js").createRetification;
   let deactivateSectorMember: typeof import("./modules/sectors/sector.service.js").deactivateSectorMember;
+  let changeRequestDueDate: typeof import("./modules/requests/request-operations.service.js").changeRequestDueDate;
+  let cancelRequest: typeof import("./modules/requests/request-operations.service.js").cancelRequest;
 
   beforeAll(async () => {
     if (!enabled) return;
@@ -49,6 +51,7 @@ suite("business workflow acceptance", () => {
     ({ approveItem, returnItem } = await import("./modules/reviews/review.service.js"));
     ({ closeRequest, createRetification } = await import("./modules/closing/closing.service.js"));
     ({ deactivateSectorMember } = await import("./modules/sectors/sector.service.js"));
+    ({ changeRequestDueDate, cancelRequest } = await import("./modules/requests/request-operations.service.js"));
 
     admin = new Client({ connectionString: adminUrl! });
     await admin.connect();
@@ -338,5 +341,59 @@ suite("business workflow acceptance", () => {
       [tenantId, destinationSectorId, assigneeAId],
     );
     expect(membership.rows[0]!.active).toBe(false);
+  });
+
+  it("audits due date changes and cancellation without deleting history", async () => {
+    const dueAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
+    const created = await createRequest({
+      tenantId,
+      actorUserId: creatorId,
+      originSectorId,
+      destinationSectorId,
+      title: "Solicitação cancelável",
+      dueAt,
+    });
+
+    expect(created.kind).toBe("created");
+    if (created.kind !== "created") return;
+    const requestId = created.request.id as string;
+
+    const newDueAt = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
+    const changed = await changeRequestDueDate({
+      tenantId,
+      requestId,
+      actorUserId: originApproverId,
+      dueAt: newDueAt,
+      reason: "Ajuste acordado com o setor de destino.",
+    });
+    expect(changed.kind).toBe("updated");
+
+    const cancelled = await cancelRequest({
+      tenantId,
+      requestId,
+      actorUserId: originApproverId,
+      reason: "Demanda não é mais necessária.",
+    });
+    expect(cancelled.kind).toBe("cancelled");
+
+    const row = await admin.query<{ status: string; due_at: Date }>(
+      `SELECT status, due_at FROM requests WHERE id = $1`,
+      [requestId],
+    );
+    expect(row.rows[0]!.status).toBe("CANCELLED");
+    expect(row.rows[0]!.due_at.toISOString()).toBe(newDueAt.toISOString());
+
+    const audit = await admin.query<{ action: string }>(
+      `SELECT action
+         FROM audit_events
+        WHERE tenant_id = $1
+          AND entity_type = 'request'
+          AND entity_id = $2
+        ORDER BY chain_seq`,
+      [tenantId, requestId],
+    );
+
+    expect(audit.rows.map((event) => event.action)).toContain("REQUEST_DUE_DATE_CHANGED");
+    expect(audit.rows.map((event) => event.action)).toContain("REQUEST_CANCELLED");
   });
 });
