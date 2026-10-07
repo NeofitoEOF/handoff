@@ -6,13 +6,13 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/handoff
+  IMAGE_PREFIX: ghcr.io/neofitoeof/handoff
 
 jobs:
   publish:
@@ -128,6 +128,9 @@ jobs:
           helm lint infra/helm/handoff
           helm package infra/helm/handoff --destination dist
 
+      - name: Create checksums
+        run: sha256sum dist/release-manifest.json dist/*.tgz > dist/SHA256SUMS
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -135,4 +138,18 @@ jobs:
           path: |
             dist/*.tgz
             dist/release-manifest.json
+            dist/SHA256SUMS
           retention-days: 90
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            dist/release-manifest.json \
+            dist/SHA256SUMS \
+            dist/*.tgz \
+            --verify-tag \
+            --generate-notes \
+            --title "$TAG"
