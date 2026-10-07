@@ -58,42 +58,42 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Testes unitários da máquina de estados
 - ✅ Endpoint de atribuição inicial separado da reatribuição
 - ✅ Estado automático Aguardando reatribuição em remoção/inativação do membro
-- ⏳ Alteração auditada de prazo
-- ⏳ Cancelamento com motivo
-- ⏳ Retificação de solicitação fechada
+- ✅ Alteração auditada de prazo
+- ✅ Cancelamento com motivo
+- ✅ Retificação de solicitação fechada
 - ⏳ Coleta/campanha multi-setor
 - ⏳ Recorrência
 
 ## Modelos
 
-- ⏳ Templates
-- ⏳ Versionamento imutável de template
-- ⏳ Campos e validações
+- ✅ Templates
+- ✅ Versionamento imutável de template
+- ✅ Campos e validações básicas
 - ⏳ Biblioteca do fluxo piloto
 - ⏳ Criar modelo a partir de planilha
 
 ## Preenchimento
 
-- ⏳ Request items
-- ⏳ Rascunho/autosave
+- ✅ Request items
+- ✅ Persistência de rascunho/autosave via upsert
 - ⏳ Formulário dinâmico
-- ⏳ Submissão
+- ✅ Submissão
 - ⏳ Link sem conta/OTP
-- ⏳ Anexos/evidências
-- ⏳ Upload XLSX
-- ⏳ Validação linha a linha
+- ✅ Anexos/evidências com SHA-256 e Object Storage
+- ✅ Upload XLSX
+- ✅ Validação linha a linha + confirmação explícita
 - ⏳ Quarentena/antivírus de arquivo
 
 ## Revisão e fechamento
 
-- ⏳ Revisão por item
-- ⏳ Aprovação parcial
-- ⏳ Devolução com comentário obrigatório
-- ⏳ Novo prazo de correção
-- ⏳ Maker-checker por pessoa/item
-- ⏳ Snapshot imutável
+- ✅ Revisão por item
+- ✅ Aprovação parcial
+- ✅ Devolução com comentário obrigatório
+- ✅ Novo prazo de correção por item
+- ✅ Maker-checker por pessoa/item
+- ✅ Snapshot imutável com SHA-256
 - ⏳ PDF de fechamento
-- ⏳ Retificação vinculada ao fechamento anterior
+- ✅ Retificação vinculada ao fechamento anterior
 
 ## Auditoria
 
