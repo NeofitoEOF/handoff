@@ -1,16 +1,12 @@
-import crypto from "node:crypto";
 import argon2 from "argon2";
-import { pool, withTenantTransaction } from "../../db.js";
+import { withTenantTransaction } from "../../db.js";
+import {
+  createScopedToken,
+  hashScopedToken,
+  tenantIdFromScopedToken,
+} from "./scoped-token.js";
 
 const REFRESH_TTL_DAYS = 30;
-
-function hashRefreshToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function newRefreshToken(): string {
-  return crypto.randomBytes(48).toString("base64url");
-}
 
 export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password, {
@@ -26,8 +22,7 @@ export async function authenticatePassword(input: {
   email: string;
   password: string;
 }) {
-  const client = await pool.connect();
-  try {
+  const user = await withTenantTransaction(input.tenantId, async (client) => {
     const result = await client.query<{
       id: string;
       email: string;
@@ -49,18 +44,20 @@ export async function authenticatePassword(input: {
       [input.email, input.tenantId],
     );
 
-    const user = result.rows[0];
-    if (!user || !user.password_hash || !user.tenant_active || !user.membership_active) {
-      return { kind: "invalid_credentials" as const };
-    }
+    return result.rows[0] ?? null;
+  });
 
-    const valid = await argon2.verify(user.password_hash, input.password);
-    if (!valid) return { kind: "invalid_credentials" as const };
-
-    return { kind: "ok" as const, user: { id: user.id, email: user.email, name: user.name } };
-  } finally {
-    client.release();
+  if (!user || !user.password_hash || !user.tenant_active || !user.membership_active) {
+    return { kind: "invalid_credentials" as const };
   }
+
+  const valid = await argon2.verify(user.password_hash, input.password);
+  if (!valid) return { kind: "invalid_credentials" as const };
+
+  return {
+    kind: "ok" as const,
+    user: { id: user.id, email: user.email, name: user.name },
+  };
 }
 
 export async function createRefreshSession(input: {
@@ -70,8 +67,8 @@ export async function createRefreshSession(input: {
   ip?: string;
   rotatedFrom?: string;
 }) {
-  const token = newRefreshToken();
-  const tokenHash = hashRefreshToken(token);
+  const token = createScopedToken(input.tenantId, 48);
+  const tokenHash = hashScopedToken(token);
   const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
 
   const session = await withTenantTransaction(input.tenantId, async (client) => {
@@ -101,52 +98,59 @@ export async function rotateRefreshSession(input: {
   userAgent?: string;
   ip?: string;
 }) {
-  const tokenHash = hashRefreshToken(input.token);
-
-  const lookup = await pool.query<{
-    id: string;
-    tenant_id: string;
-    user_id: string;
-    expires_at: Date;
-    revoked_at: Date | null;
-  }>(
-    `SELECT id, tenant_id, user_id, expires_at, revoked_at
-       FROM refresh_sessions
-      WHERE token_hash = $1
-      LIMIT 1`,
-    [tokenHash],
-  );
-
-  const current = lookup.rows[0];
-  if (!current || current.revoked_at || current.expires_at.getTime() <= Date.now()) {
+  const tenantId = tenantIdFromScopedToken(input.token);
+  if (!tenantId) {
     return { kind: "invalid_refresh" as const };
   }
 
-  return withTenantTransaction(current.tenant_id, async (client) => {
+  const tokenHash = hashScopedToken(input.token);
+
+  return withTenantTransaction(tenantId, async (client) => {
     const locked = await client.query<{
       id: string;
-      revoked_at: Date | null;
+      tenant_id: string;
+      user_id: string;
       expires_at: Date;
+      revoked_at: Date | null;
+      created_at: Date;
+      password_changed_at: Date | null;
     }>(
-      `SELECT id, revoked_at, expires_at
-         FROM refresh_sessions
-        WHERE id = $1
-        FOR UPDATE`,
-      [current.id],
+      `SELECT
+          rs.id,
+          rs.tenant_id,
+          rs.user_id,
+          rs.expires_at,
+          rs.revoked_at,
+          rs.created_at,
+          u.password_changed_at
+         FROM refresh_sessions rs
+         JOIN users u ON u.id = rs.user_id
+        WHERE rs.token_hash = $1
+        LIMIT 1
+        FOR UPDATE OF rs`,
+      [tokenHash],
     );
 
-    const session = locked.rows[0];
-    if (!session || session.revoked_at || session.expires_at.getTime() <= Date.now()) {
+    const current = locked.rows[0];
+    if (
+      !current ||
+      current.revoked_at ||
+      current.expires_at.getTime() <= Date.now() ||
+      (current.password_changed_at &&
+        current.password_changed_at.getTime() > current.created_at.getTime())
+    ) {
       return { kind: "invalid_refresh" as const };
     }
 
     await client.query(
-      `UPDATE refresh_sessions SET revoked_at = now() WHERE id = $1`,
+      `UPDATE refresh_sessions
+          SET revoked_at = now()
+        WHERE id = $1`,
       [current.id],
     );
 
-    const token = newRefreshToken();
-    const newHash = hashRefreshToken(token);
+    const token = createScopedToken(tenantId, 48);
+    const newHash = hashScopedToken(token);
     const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000);
 
     const next = await client.query<{ id: string }>(
@@ -155,7 +159,7 @@ export async function rotateRefreshSession(input: {
        VALUES ($1, $2, $3, $4, $5::inet, $6, $7)
        RETURNING id`,
       [
-        current.tenant_id,
+        tenantId,
         current.user_id,
         newHash,
         input.userAgent ?? null,
@@ -170,16 +174,23 @@ export async function rotateRefreshSession(input: {
       token,
       sessionId: next.rows[0]!.id,
       expiresAt,
-      tenantId: current.tenant_id,
+      tenantId,
       userId: current.user_id,
     };
   });
 }
 
 export async function revokeRefreshToken(token: string): Promise<void> {
-  const tokenHash = hashRefreshToken(token);
-  await pool.query(
-    `UPDATE refresh_sessions SET revoked_at = COALESCE(revoked_at, now()) WHERE token_hash = $1`,
-    [tokenHash],
-  );
+  const tenantId = tenantIdFromScopedToken(token);
+  if (!tenantId) return;
+
+  const tokenHash = hashScopedToken(token);
+  await withTenantTransaction(tenantId, async (client) => {
+    await client.query(
+      `UPDATE refresh_sessions
+          SET revoked_at = COALESCE(revoked_at, now())
+        WHERE token_hash = $1`,
+      [tokenHash],
+    );
+  });
 }
