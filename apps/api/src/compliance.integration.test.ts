@@ -142,6 +142,24 @@ suite("LGPD and retention", () => {
     expect(updated.settings.retention_years).toBe(1);
     expect(updated.settings.dpa_status).toBe("SIGNED");
     expect(updated.settings.dpa_reference).toBe("DPA-2026-001");
+
+    const retentionOnly = await updateComplianceSettings({
+      tenantId,
+      actorUserId: adminUserId,
+      retentionYears: 2,
+    });
+    expect(retentionOnly.kind).toBe("updated");
+    if (retentionOnly.kind !== "updated") return;
+    expect(retentionOnly.settings.retention_years).toBe(2);
+    expect(retentionOnly.settings.dpa_status).toBe("SIGNED");
+    expect(retentionOnly.settings.dpa_reference).toBe("DPA-2026-001");
+
+    const restoreRetention = await updateComplianceSettings({
+      tenantId,
+      actorUserId: adminUserId,
+      retentionYears: 1,
+    });
+    expect(restoreRetention.kind).toBe("updated");
   });
 
   it("reports only closed/cancelled records older than the retention window", async () => {
