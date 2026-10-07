@@ -66,3 +66,34 @@ Antes de eliminar ou anonimizar dados é necessário avaliar:
 - impacto sobre evidências e snapshots já aprovados.
 
 Esse desenho mantém o atendimento operacional do pedido sem transformar uma ação jurídica sensível em exclusão automática irreversível.
+
+## Registro de operações de tratamento
+
+O Admin da Empresa mantém um registro das operações de tratamento com:
+
+- nome da operação;
+- finalidade;
+- base legal;
+- categorias de dados;
+- categorias de titulares;
+- operadores/processadores envolvidos;
+- prazo de retenção específico, quando aplicável;
+- status ativo/inativo.
+
+Endpoints:
+
+- `GET /v1/admin/compliance/processing-activities`
+- `POST /v1/admin/compliance/processing-activities`
+- `PUT /v1/admin/compliance/processing-activities/:id`
+
+Toda criação/alteração gera evento append-only na auditoria.
+
+## DPA
+
+A configuração de compliance também registra o status do DPA:
+
+- `NOT_CONFIGURED`
+- `DRAFT`
+- `SIGNED`
+
+Quando `SIGNED`, data de assinatura é obrigatória. Uma referência documental pode ser registrada sem armazenar o contrato dentro dessa configuração.
