@@ -82,6 +82,22 @@ jobs:
       - name: Lint Helm chart
         run: helm lint infra/helm/handoff
 
+      - name: Verify Helm digest rendering
+        run: |
+          api_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          worker_digest="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          web_digest="sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+
+          helm template handoff infra/helm/handoff \
+            --set-string images.api.digest="$api_digest" \
+            --set-string images.worker.digest="$worker_digest" \
+            --set-string images.web.digest="$web_digest" \
+            > /tmp/handoff-rendered.yaml
+
+          test "$(grep -Fc "ghcr.io/neofitoeof/handoff-api@$api_digest" /tmp/handoff-rendered.yaml)" -ge 2
+          grep -Fq "ghcr.io/neofitoeof/handoff-worker@$worker_digest" /tmp/handoff-rendered.yaml
+          grep -Fq "ghcr.io/neofitoeof/handoff-web@$web_digest" /tmp/handoff-rendered.yaml
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
