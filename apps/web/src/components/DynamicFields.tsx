@@ -17,6 +17,11 @@ export function DynamicFields({
     <div className="field-grid">
       {schema.fields.map((field) => {
         const current = value[field.key] ?? "";
+        const calculated = Boolean(field.calculation);
+
+        if (field.calculation?.op === "COLUMN_SUM") {
+          return null;
+        }
 
         if (field.type === "BOOLEAN") {
           return (
@@ -25,7 +30,7 @@ export function DynamicFields({
                 type="checkbox"
                 checked={Boolean(current)}
                 onChange={(event) => set(field.key, event.target.checked)}
-                disabled={disabled}
+                disabled={disabled || calculated}
               />
               <span>{field.label}{field.required ? " *" : ""}</span>
             </label>
@@ -39,7 +44,7 @@ export function DynamicFields({
               <select
                 value={String(current)}
                 required={field.required}
-                disabled={disabled}
+                disabled={disabled || calculated}
                 onChange={(event) => set(field.key, event.target.value)}
               >
                 <option value="">Selecione</option>
@@ -67,7 +72,7 @@ export function DynamicFields({
               required={field.required}
               min={field.min}
               max={field.max}
-              disabled={disabled}
+              disabled={disabled || calculated}
               onChange={(event) => {
                 if (field.type === "NUMBER" || field.type === "MONEY") {
                   set(field.key, event.target.value === "" ? "" : Number(event.target.value));
