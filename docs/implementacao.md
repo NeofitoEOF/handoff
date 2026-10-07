@@ -61,8 +61,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Alteração auditada de prazo
 - ✅ Cancelamento com motivo
 - ✅ Retificação de solicitação fechada
-- ⏳ Coleta/campanha multi-setor
-- ⏳ Recorrência
+- ✅ Coleta/campanha multi-setor
+- 🟡 Recorrência configurável; materialização automática pendente
 
 ## Modelos
 
