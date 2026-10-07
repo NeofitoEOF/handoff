@@ -1,13 +1,13 @@
-import crypto from "node:crypto";
-import { pool, withTenantTransaction } from "../../db.js";
+import { withTenantTransaction } from "../../db.js";
 import { isSectorManager, isTenantAdmin } from "../../authorization.js";
 import { hashPassword } from "./identity.service.js";
 import { enqueueEmail } from "../notifications/notification.service.js";
 import { config } from "../../config.js";
-
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
+import {
+  createScopedToken,
+  hashScopedToken,
+  tenantIdFromScopedToken,
+} from "./scoped-token.js";
 
 export async function createInvitation(input: {
   tenantId: string;
@@ -30,8 +30,8 @@ export async function createInvitation(input: {
     if (!sector.rows[0]) return { kind: "sector_not_found" as const };
     if (!sector.rows[0].active) return { kind: "sector_inactive" as const };
 
-    const token = crypto.randomBytes(32).toString("base64url");
-    const tokenHash = hashToken(token);
+    const token = createScopedToken(input.tenantId);
+    const tokenHash = hashScopedToken(token);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await client.query(
@@ -76,7 +76,11 @@ export async function createInvitation(input: {
         input.tenantId,
         input.actorUserId,
         result.rows[0]!.id,
-        JSON.stringify({ sectorId: input.sectorId, email: input.email.toLowerCase(), role: input.role }),
+        JSON.stringify({
+          sectorId: input.sectorId,
+          email: input.email.toLowerCase(),
+          role: input.role,
+        }),
       ],
     );
 
@@ -94,25 +98,33 @@ export async function acceptInvitation(input: {
   name: string;
   password: string;
 }) {
-  const tokenHash = hashToken(input.token);
-  const lookup = await pool.query<{
-    id: string;
-    tenant_id: string;
-    sector_id: string;
-    email: string;
-    role: "MANAGER" | "APPROVER" | "MEMBER";
-    expires_at: Date;
-    accepted_at: Date | null;
-    revoked_at: Date | null;
-  }>(
-    `SELECT id, tenant_id, sector_id, email, role, expires_at, accepted_at, revoked_at
-       FROM invitations
-      WHERE token_hash = $1
-      LIMIT 1`,
-    [tokenHash],
-  );
+  const tenantId = tenantIdFromScopedToken(input.token);
+  if (!tenantId) {
+    return { kind: "invalid_invitation" as const };
+  }
 
-  const invitation = lookup.rows[0];
+  const tokenHash = hashScopedToken(input.token);
+
+  const invitation = await withTenantTransaction(tenantId, async (client) => {
+    const lookup = await client.query<{
+      id: string;
+      tenant_id: string;
+      sector_id: string;
+      email: string;
+      role: "MANAGER" | "APPROVER" | "MEMBER";
+      expires_at: Date;
+      accepted_at: Date | null;
+      revoked_at: Date | null;
+    }>(
+      `SELECT id, tenant_id, sector_id, email, role, expires_at, accepted_at, revoked_at
+         FROM invitations
+        WHERE token_hash = $1
+        LIMIT 1`,
+      [tokenHash],
+    );
+    return lookup.rows[0] ?? null;
+  });
+
   if (
     !invitation ||
     invitation.accepted_at ||
@@ -124,7 +136,7 @@ export async function acceptInvitation(input: {
 
   const passwordHash = await hashPassword(input.password);
 
-  return withTenantTransaction(invitation.tenant_id, async (client) => {
+  return withTenantTransaction(tenantId, async (client) => {
     const locked = await client.query<{
       accepted_at: Date | null;
       revoked_at: Date | null;
@@ -138,12 +150,20 @@ export async function acceptInvitation(input: {
     );
 
     const current = locked.rows[0];
-    if (!current || current.accepted_at || current.revoked_at || current.expires_at.getTime() <= Date.now()) {
+    if (
+      !current ||
+      current.accepted_at ||
+      current.revoked_at ||
+      current.expires_at.getTime() <= Date.now()
+    ) {
       return { kind: "invalid_invitation" as const };
     }
 
     const existing = await client.query<{ id: string; password_hash: string | null }>(
-      `SELECT id, password_hash FROM users WHERE lower(email) = lower($1) LIMIT 1`,
+      `SELECT id, password_hash
+         FROM users
+        WHERE lower(email) = lower($1)
+        LIMIT 1`,
       [invitation.email],
     );
 
@@ -153,7 +173,10 @@ export async function acceptInvitation(input: {
       if (!existing.rows[0].password_hash) {
         await client.query(
           `UPDATE users
-              SET name = $2, password_hash = $3, password_changed_at = now(), active = true
+              SET name = $2,
+                  password_hash = $3,
+                  password_changed_at = now(),
+                  active = true
             WHERE id = $1`,
           [userId, input.name, passwordHash],
         );
@@ -173,7 +196,7 @@ export async function acceptInvitation(input: {
        VALUES ($1, $2, 'USER', true)
        ON CONFLICT (tenant_id, user_id)
        DO UPDATE SET active = true`,
-      [invitation.tenant_id, userId],
+      [tenantId, userId],
     );
 
     await client.query(
@@ -181,11 +204,13 @@ export async function acceptInvitation(input: {
        VALUES ($1, $2, $3, $4, true)
        ON CONFLICT (tenant_id, sector_id, user_id)
        DO UPDATE SET role = EXCLUDED.role, active = true`,
-      [invitation.tenant_id, invitation.sector_id, userId, invitation.role],
+      [tenantId, invitation.sector_id, userId, invitation.role],
     );
 
     await client.query(
-      `UPDATE invitations SET accepted_at = now() WHERE id = $1`,
+      `UPDATE invitations
+          SET accepted_at = now()
+        WHERE id = $1`,
       [invitation.id],
     );
 
@@ -194,16 +219,20 @@ export async function acceptInvitation(input: {
         (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
        VALUES ($1, $2, 'INVITATION_ACCEPTED', 'invitation', $3, $4::jsonb)`,
       [
-        invitation.tenant_id,
+        tenantId,
         userId,
         invitation.id,
-        JSON.stringify({ userId, sectorId: invitation.sector_id, role: invitation.role }),
+        JSON.stringify({
+          userId,
+          sectorId: invitation.sector_id,
+          role: invitation.role,
+        }),
       ],
     );
 
     return {
       kind: "accepted" as const,
-      tenantId: invitation.tenant_id,
+      tenantId,
       userId,
       sectorId: invitation.sector_id,
       role: invitation.role,
