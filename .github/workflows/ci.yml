@@ -62,6 +62,9 @@ jobs:
       - name: Check migration safety
         run: node scripts/check-migrations.mjs
 
+      - name: Validate release metadata
+        run: node scripts/check-release.mjs
+
       - run: pnpm -r typecheck
       - run: pnpm -r test
       - run: pnpm -r build
