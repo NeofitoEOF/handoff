@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: handoff
+      POSTGRES_PASSWORD: handoff
+      POSTGRES_DB: handoff
+    ports:
+      - "5432:5432"
+    volumes:
+      - handoff-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U handoff -d handoff"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  handoff-postgres:
