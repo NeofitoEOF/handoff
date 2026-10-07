@@ -152,26 +152,6 @@ export async function guestConfirmXlsx(input: {
         [context.requestId],
       );
 
-      if (input.itemId && ["IN_REVIEW", "APPROVED"].includes(request.status)) {
-        await client.query(
-          `UPDATE request_items
-              SET status = 'DRAFT',
-                  reviewed_by = NULL,
-                  reviewed_at = NULL,
-                  updated_at = now()
-            WHERE id = $1
-              AND status IN ('SUBMITTED', 'APPROVED')`,
-          [input.itemId],
-        );
-        await client.query(
-          `UPDATE requests
-              SET status = 'IN_CORRECTION', updated_at = now()
-            WHERE id = $1
-              AND status IN ('IN_REVIEW', 'APPROVED')`,
-          [context.requestId],
-        );
-      }
-
       await client.query(
         `INSERT INTO audit_events
           (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
@@ -246,6 +226,27 @@ export async function guestUploadEvidence(input: {
           storageKey,
         ],
       );
+
+      if (input.itemId && ["IN_REVIEW", "APPROVED"].includes(request.status)) {
+        await client.query(
+          `UPDATE request_items
+              SET status = 'DRAFT',
+                  reviewed_by = NULL,
+                  reviewed_at = NULL,
+                  updated_at = now()
+            WHERE id = $1
+              AND status IN ('SUBMITTED', 'APPROVED')`,
+          [input.itemId],
+        );
+
+        await client.query(
+          `UPDATE requests
+              SET status = 'IN_CORRECTION', updated_at = now()
+            WHERE id = $1
+              AND status IN ('IN_REVIEW', 'APPROVED')`,
+          [context.requestId],
+        );
+      }
 
       await client.query(
         `INSERT INTO audit_events
