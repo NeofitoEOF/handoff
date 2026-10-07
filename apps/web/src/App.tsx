@@ -8,9 +8,11 @@ import { GuestPage } from "./pages/GuestPage";
 import { InboxPage } from "./pages/InboxPage";
 import { InvitePage } from "./pages/InvitePage";
 import { LoginPage } from "./pages/LoginPage";
+import { NewRequestPage } from "./pages/NewRequestPage";
 import { RequestPage } from "./pages/RequestPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SectorsPage } from "./pages/SectorsPage";
+import { SectorDetailPage } from "./pages/SectorDetailPage";
 
 export function App() {
   return (
@@ -24,8 +26,10 @@ export function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/inbox" element={<InboxPage />} />
+          <Route path="/requests/new" element={<NewRequestPage />} />
           <Route path="/requests/:id" element={<RequestPage />} />
           <Route path="/sectors" element={<SectorsPage />} />
+          <Route path="/sectors/:id" element={<SectorDetailPage />} />
           <Route path="/audit" element={<AuditPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
