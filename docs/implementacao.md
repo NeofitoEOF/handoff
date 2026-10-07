@@ -25,7 +25,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Usuário global
 - ✅ Vínculo usuário × tenant com papel ADMIN/AUDITOR/USER
 - ✅ RLS nas tabelas tenant-scoped criadas até aqui
-- 🟡 Teste automatizado de vazamento entre tenants — RLS pronto, suíte E2E pendente
+- 🟡 Teste automatizado de vazamento entre tenants implementado com usuário sem BYPASSRLS; aguardando validação do CI
 - ✅ Cadastro assistido da empresa via endpoint interno de provisionamento
 - ✅ Suspensão/inativação de tenant com revogação de sessões
 - ✅ Exportação completa do tenant
@@ -76,7 +76,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 
 - ✅ Request items
 - ✅ Persistência de rascunho/autosave via upsert
-- ⏳ Formulário dinâmico
+- ✅ Formulário dinâmico web a partir do schema publicado
 - ✅ Submissão
 - ✅ Link sem conta + OTP + sessão limitada à solicitação
 - ✅ Anexos/evidências com SHA-256 e Object Storage
@@ -114,16 +114,34 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Escalonamento de atraso e solicitações sem responsável
 - ✅ Caixa de entrada backend
 - ✅ Indicadores por setor backend
-- ⏳ Login Microsoft/Entra ID
+- ✅ Login + refresh + MFA + recuperação Microsoft/Entra ID
 - ⏳ Outlook/Teams
 
 ## Frontend
 
-- ⏳ React + Vite
+- ✅ React + Vite
 - ⏳ Login
-- ⏳ Caixa de entrada
-- ⏳ Solicitação
-- ⏳ Revisão
-- ⏳ Gestão de setor
-- ⏳ Administração da empresa
-- ⏳ Auditoria
+- ✅ Caixa de entrada
+- ✅ Solicitação completa: criar, atribuir, preencher, importar, evidência, exportar, fechar/retificar
+- ✅ Revisão parcial por item
+- ✅ Gestão de setor, membros, convites e indicadores
+- ✅ Administração básica, MFA e exportação do tenant
+- ✅ Auditoria/timeline e exportação CSV
+
+
+## Colaboração e arquivos
+
+- ✅ Comentários auditáveis por solicitação/item/campo
+- ✅ Listagem de evidências com download pré-assinado de 5 minutos
+- ✅ Exportação da solicitação para XLSX e CSV com mitigação de formula injection
+- ✅ Convidado por link pode preencher formulário, importar XLSX e anexar evidência
+- ✅ Autoria de convidado preservada em imports, evidências, snapshot e PDF
+
+## Segurança operacional
+
+- ✅ Rate limit global e reforçado em login/OTP/reset
+- ✅ Bloqueio temporário após 5 falhas de login por conta
+- ✅ CORS limitado às origens configuradas
+- ✅ Redação de Authorization/cookies nos logs
+- ✅ Banco separa usuário de migração e usuário de aplicação sem BYPASSRLS
+- ✅ ClamAV fail-closed em todos os caminhos de XLSX/evidência
