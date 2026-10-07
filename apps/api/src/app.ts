@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { registerAuth } from "./auth.js";
 import { pool } from "./db.js";
@@ -36,6 +37,11 @@ export async function buildApp() {
   await app.register(cors, {
     origin: true,
     credentials: true,
+  });
+  await app.register(rateLimit, {
+    global: true,
+    max: 200,
+    timeWindow: "1 minute",
   });
   await app.register(cookie);
   await registerAuth(app);
