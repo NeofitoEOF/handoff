@@ -1,0 +1,74 @@
+domain: handoff.example.com
+
+images:
+  api:
+    repository: ghcr.io/neofitoeof/handoff-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/neofitoeof/handoff-web
+    tag: latest
+    pullPolicy: IfNotPresent
+  worker:
+    repository: ghcr.io/neofitoeof/handoff-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+
+replicas:
+  api: 2
+  web: 2
+  worker: 1
+
+resources:
+  api:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { cpu: 1000m, memory: 512Mi }
+  web:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 300m, memory: 128Mi }
+  worker:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1500m, memory: 1Gi }
+
+autoscaling:
+  api:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  worker:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tlsSecretName: handoff-tls
+
+config:
+  NODE_ENV: production
+  PORT: "3000"
+  OBJECT_STORAGE_REGION: us-east-1
+  OBJECT_STORAGE_BUCKET: handoff
+  OBJECT_STORAGE_FORCE_PATH_STYLE: "false"
+  CLAMAV_ENABLED: "true"
+  CLAMAV_HOST: clamav.security.svc.cluster.local
+  CLAMAV_PORT: "3310"
+  CLAMAV_TIMEOUT_MS: "30000"
+  EMAIL_TRANSPORT: smtp
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  WORKER_POLL_MS: "30000"
+  GOTENBERG_URL: http://gotenberg.tools.svc.cluster.local:3000
+
+# Required secret keys are supplied outside the chart, preferably by
+# External Secrets + OCI Vault.
+secretName: handoff-secrets
+
+service:
+  apiPort: 3000
+  webPort: 8080
