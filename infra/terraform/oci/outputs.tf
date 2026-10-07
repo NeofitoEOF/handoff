@@ -21,3 +21,12 @@ output "postgres_id" {
 output "postgres_primary_endpoint" {
   value = try(oci_psql_db_system.handoff.network_details[0].primary_db_endpoint_private_ip, null)
 }
+
+
+output "waf_policy_id" {
+  value = try(oci_waf_web_app_firewall_policy.handoff[0].id, null)
+}
+
+output "waf_id" {
+  value = try(oci_waf_web_app_firewall.handoff[0].id, null)
+}
