@@ -202,3 +202,15 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Aceite: remoção do responsável → WAITING_REASSIGNMENT preservando prazo
 - ✅ Aceite: alteração de prazo e cancelamento registrados em auditoria
 - ✅ CI verde com migrations, typecheck, testes, build dos apps, imagens Docker e Helm lint
+
+
+## Continuidade e recuperação
+
+- ✅ Script de backup lógico PostgreSQL em formato custom
+- ✅ Script de restore com verificação de schema
+- ✅ Restore smoke test executado no CI e validado com sucesso
+- ✅ Restore drill mensal automatizado + execução manual disponível
+- ✅ Runbook de incidente, rollback e recuperação
+- ✅ Estratégia de rollback por tags/SHA imutáveis sem rollback destrutivo de migration
+- ✅ RPO/RTO documentados: 15 min / 4 h
+- 🟡 PITR e backup gerenciado de produção — procedimento definido; habilitação depende do PostgreSQL gerenciado/conta OCI
