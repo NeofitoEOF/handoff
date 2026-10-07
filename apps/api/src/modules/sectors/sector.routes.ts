@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { addSectorMember, createSector, listSectors } from "./sector.service.js";
+import {
+  addSectorMember,
+  createSector,
+  deactivateSectorMember,
+  listSectors,
+} from "./sector.service.js";
 
 const sectorParams = z.object({ id: z.string().uuid() });
 
@@ -54,4 +59,39 @@ export async function sectorRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(200).send(result.membership);
     }
   });
+  app.delete(
+    "/v1/sectors/:id/members/:userId",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({
+        id: z.string().uuid(),
+        userId: z.string().uuid(),
+      }).parse(request.params);
+
+      const result = await deactivateSectorMember({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        sectorId: params.id,
+        userId: params.userId,
+      });
+
+      switch (result.kind) {
+        case "not_found":
+          return reply.code(404).send({ message: "Membro não encontrado." });
+        case "already_inactive":
+          return reply.code(200).send({ changed: false, waitingReassignmentCount: 0 });
+        case "forbidden":
+          return reply.code(403).send({ message: "Sem permissão para remover este membro." });
+        case "cannot_remove_manager":
+          return reply.code(403).send({ message: "Somente Admin da Empresa pode remover Gestor." });
+        case "last_manager":
+          return reply.code(409).send({ message: "O último Gestor ativo do setor não pode ser removido." });
+        case "deactivated":
+          return reply.code(200).send({
+            changed: true,
+            waitingReassignmentCount: result.waitingReassignmentCount,
+          });
+      }
+    },
+  );
 }
