@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { config } from "../../config.js";
 import { pool, withTenantTransaction } from "../../db.js";
 import { isTenantAdmin } from "../../authorization.js";
+import { encryptIntegrationSecret } from "./integration-crypto.js";
 
 function hash(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -71,7 +72,8 @@ export async function getMicrosoftIntegration(input: {
       return { kind: "forbidden" as const };
     }
     const result = await client.query(
-      `SELECT entra_tenant_id, enabled, updated_at
+      `SELECT entra_tenant_id, enabled, updated_at,
+              (teams_webhook_ciphertext IS NOT NULL) AS has_teams_webhook
          FROM tenant_microsoft_integrations
         WHERE tenant_id = $1`,
       [input.tenantId],
@@ -310,4 +312,59 @@ export async function consumeMicrosoftTicket(ticket: string) {
   } finally {
     client.release();
   }
+}
+
+
+export async function configureTeamsWebhook(input: {
+  tenantId: string;
+  actorUserId: string;
+  webhookUrl: string | null;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await isTenantAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const integration = await client.query(
+      `SELECT 1 FROM tenant_microsoft_integrations WHERE tenant_id = $1 LIMIT 1`,
+      [input.tenantId],
+    );
+    if (integration.rowCount !== 1) {
+      return { kind: "microsoft_not_configured" as const };
+    }
+
+    const encrypted = input.webhookUrl
+      ? encryptIntegrationSecret(input.webhookUrl)
+      : null;
+
+    await client.query(
+      `UPDATE tenant_microsoft_integrations
+          SET teams_webhook_ciphertext = $2,
+              teams_webhook_iv = $3,
+              teams_webhook_tag = $4,
+              updated_by = $5,
+              updated_at = now()
+        WHERE tenant_id = $1`,
+      [
+        input.tenantId,
+        encrypted?.ciphertext ?? null,
+        encrypted?.iv ?? null,
+        encrypted?.tag ?? null,
+        input.actorUserId,
+      ],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, 'TEAMS_WEBHOOK_CONFIGURED', 'tenant', $1, $3::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        JSON.stringify({ configured: Boolean(input.webhookUrl) }),
+      ],
+    );
+
+    return { kind: "saved" as const, configured: Boolean(input.webhookUrl) };
+  });
 }
