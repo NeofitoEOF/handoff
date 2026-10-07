@@ -1,0 +1,21 @@
+{{- if .Values.observability.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: handoff-api
+  labels:
+    {{- include "handoff.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: handoff
+      app.kubernetes.io/component: api
+  endpoints:
+    - port: http
+      path: /internal/metrics
+      interval: {{ .Values.observability.serviceMonitor.interval }}
+      authorization:
+        credentials:
+          name: {{ .Values.secretName }}
+          key: METRICS_TOKEN
+{{- end }}
