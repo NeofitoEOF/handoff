@@ -144,6 +144,56 @@ export function GuestPage() {
     }
   }
 
+  async function uploadXlsx(file: File) {
+    if (!sessionToken) return;
+    setBusy(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const validated = await guestFetch<{
+        importId: string;
+        acceptedRows: number;
+        rejectedRows: number;
+      }>("/v1/guest/imports/xlsx", { method: "POST", body: form }, sessionToken);
+
+      const confirmed = window.confirm(
+        `Validação concluída: ${validated.acceptedRows} válidas e ${validated.rejectedRows} inválidas. Importar as linhas válidas?`,
+      );
+      if (!confirmed) return;
+
+      await guestFetch(
+        `/v1/guest/imports/${validated.importId}/confirm`,
+        { method: "POST" },
+        sessionToken,
+      );
+      setMessage("Planilha importada para o rascunho.");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível importar a planilha.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadEvidence(file: File, itemId?: string) {
+    if (!sessionToken) return;
+    setBusy(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      if (itemId) form.append("itemId", itemId);
+      await guestFetch("/v1/guest/evidence", { method: "POST", body: form }, sessionToken);
+      setMessage("Evidência anexada.");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível anexar a evidência.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit() {
     if (!sessionToken) return;
     setBusy(true);
@@ -253,6 +303,29 @@ export function GuestPage() {
               <button className="secondary" disabled={busy} onClick={() => void saveItem()}>
                 Salvar rascunho
               </button>
+              <label className="button secondary file-button">
+                Importar XLSX
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadXlsx(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+              <label className="button secondary file-button">
+                Anexar evidência
+                <input
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadEvidence(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
               <button className="primary" disabled={busy} onClick={() => void submit()}>
                 Enviar para revisão
               </button>
@@ -274,7 +347,20 @@ export function GuestPage() {
                       </button>
                     </td>
                     <td><span className={`status status-${item.status.toLowerCase()}`}>{item.status}</span></td>
-                    <td>{item.return_comment ?? "—"}</td>
+                    <td>
+                      {item.return_comment ?? "—"}
+                      <label className="button secondary file-button compact">
+                        Evidência
+                        <input
+                          type="file"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) void uploadEvidence(file, item.id);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </td>
                   </tr>
                 ))}
               </tbody>
