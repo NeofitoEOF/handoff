@@ -14,6 +14,14 @@ type ImportPreview = {
   errors: Array<{ row: number; field: string; message: string }>;
 };
 
+type SectorMember = {
+  user_id: string;
+  name: string;
+  email: string;
+  role: "MANAGER" | "APPROVER" | "MEMBER";
+  active: boolean;
+};
+
 type ClosureDocument = {
   id: string;
   status: "PENDING" | "PROCESSING" | "READY" | "FAILED";
@@ -36,6 +44,7 @@ export function RequestPage() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [message, setMessage] = useState("");
   const [localError, setLocalError] = useState("");
+  const [selectedAssignee, setSelectedAssignee] = useState("");
 
   const detail = useQuery({
     queryKey: ["request", id],
@@ -47,6 +56,17 @@ export function RequestPage() {
     queryKey: ["request-items", id],
     queryFn: () => api<{ data: RequestItem[] }>(`/v1/requests/${id}/items`),
     enabled: !!id,
+  });
+
+  const members = useQuery({
+    queryKey: ["sector-members", detail.data?.request.destination_sector_id],
+    queryFn: () =>
+      api<{ data: SectorMember[] }>(
+        `/v1/sectors/${detail.data!.request.destination_sector_id}/members`,
+      ),
+    enabled:
+      !!detail.data &&
+      (detail.data.permissions.canAssign || detail.data.permissions.canReassign),
   });
 
   const closure = useQuery({
@@ -174,6 +194,136 @@ export function RequestPage() {
       });
       setMessage("Importação confirmada.");
       setImportPreview(null);
+      await refreshAll();
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function assignOrReassign() {
+    if (!selectedAssignee) {
+      setLocalError("Selecione um responsável.");
+      return;
+    }
+    setLocalError("");
+    try {
+      if (detail.data?.permissions.canAssign) {
+        await api(`/v1/requests/${id}/assign`, {
+          method: "POST",
+          body: JSON.stringify({ assigneeUserId: selectedAssignee }),
+        });
+        setMessage("Responsável atribuído.");
+      } else {
+        const reason = window.prompt(
+          "Motivo da reatribuição: ABSENCE, TERMINATION, ROLE_CHANGE, WORKLOAD, WRONG_ASSIGNMENT, ESCALATION ou OTHER",
+          "WORKLOAD",
+        );
+        if (!reason) return;
+        const allowed = ["ABSENCE", "TERMINATION", "ROLE_CHANGE", "WORKLOAD", "WRONG_ASSIGNMENT", "ESCALATION", "OTHER"];
+        if (!allowed.includes(reason)) {
+          setLocalError("Motivo de reatribuição inválido.");
+          return;
+        }
+        const comment = window.prompt("Comentário opcional:") ?? undefined;
+        await api(`/v1/requests/${id}/reassign`, {
+          method: "POST",
+          body: JSON.stringify({
+            newAssigneeUserId: selectedAssignee,
+            reason,
+            ...(comment ? { comment } : {}),
+          }),
+        });
+        setMessage("Responsável reatribuído; o prazo original foi preservado.");
+      }
+      setSelectedAssignee("");
+      await refreshAll();
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function changeDueDate() {
+    const current = new Date(request.due_at).toISOString().slice(0, 16);
+    const value = window.prompt("Novo prazo (AAAA-MM-DDTHH:mm):", current);
+    if (!value) return;
+    const reason = window.prompt("Motivo da alteração de prazo:");
+    if (!reason) return;
+
+    setLocalError("");
+    try {
+      await api(`/v1/requests/${id}/due-date`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          dueAt: new Date(value).toISOString(),
+          reason,
+        }),
+      });
+      setMessage("Prazo alterado e registrado na auditoria.");
+      await refreshAll();
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function createGuestLink() {
+    const email = window.prompt("E-mail do convidado:");
+    if (!email) return;
+    setLocalError("");
+    try {
+      const result = await api<{ guestLinkId: string; devLinkToken?: string; linkToken?: string }>(
+        `/v1/requests/${id}/guest-links`,
+        {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        },
+      );
+      const token = result.devLinkToken ?? result.linkToken;
+      if (token) {
+        const url = `${window.location.origin}/guest?token=${encodeURIComponent(token)}`;
+        await navigator.clipboard?.writeText(url).catch(() => undefined);
+        setMessage("Link criado e copiado. Em produção o convidado recebe o acesso por e-mail.");
+      } else {
+        setMessage("Acesso de convidado criado.");
+      }
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function createRetification() {
+    const reason = window.prompt("Motivo da retificação:");
+    if (!reason) return;
+    const due = window.prompt(
+      "Prazo da retificação (AAAA-MM-DD):",
+      new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+    );
+    if (!due) return;
+
+    setLocalError("");
+    try {
+      const result = await api<{ id: string }>(`/v1/requests/${id}/retifications`, {
+        method: "POST",
+        body: JSON.stringify({
+          reason,
+          dueAt: new Date(`${due}T23:59:59`).toISOString(),
+        }),
+      });
+      window.location.assign(`/requests/${result.id}`);
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function cancelRequest() {
+    const reason = window.prompt("Motivo do cancelamento:");
+    if (!reason) return;
+    setLocalError("");
+    try {
+      await api(`/v1/requests/${id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      setMessage("Solicitação cancelada.");
       await refreshAll();
     } catch (error) {
       setLocalError(errorMessage(error));
@@ -343,7 +493,50 @@ export function RequestPage() {
               <div><dt>Origem</dt><dd>{request.origin_sector_name}</dd></div>
               <div><dt>Destino</dt><dd>{request.destination_sector_name}</dd></div>
             </dl>
+            {(permissions.canAssign || permissions.canReassign) && (
+              <div className="stack compact-stack">
+                <label className="field">
+                  <span>{permissions.canAssign ? "Atribuir responsável" : "Reatribuir responsável"}</span>
+                  <select value={selectedAssignee} onChange={(e) => setSelectedAssignee(e.target.value)}>
+                    <option value="">Selecione</option>
+                    {members.data?.data
+                      .filter((member) => member.active)
+                      .map((member) => (
+                        <option key={member.user_id} value={member.user_id}>
+                          {member.name} · {member.role}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <button className="secondary" onClick={() => void assignOrReassign()}>
+                  {permissions.canAssign ? "Atribuir" : "Reatribuir"}
+                </button>
+              </div>
+            )}
           </div>
+
+          {(permissions.canCancel || permissions.canReassign) && (
+            <div className="card">
+              <h2>Operação</h2>
+              <div className="stack">
+                {permissions.canReassign && (
+                  <button className="secondary" onClick={() => void createGuestLink()}>
+                    Criar acesso de convidado
+                  </button>
+                )}
+                {permissions.canCancel && (
+                  <>
+                    <button className="secondary" onClick={() => void changeDueDate()}>
+                      Alterar prazo
+                    </button>
+                    <button className="danger" onClick={() => void cancelRequest()}>
+                      Cancelar solicitação
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="card">
             <h2>Evidência geral</h2>
@@ -396,6 +589,11 @@ export function RequestPage() {
                 </>
               ) : (
                 <p className="muted">PDF ainda não disponível.</p>
+              )}
+              {permissions.canRetify && (
+                <button className="secondary full-width" onClick={() => void createRetification()}>
+                  Criar retificação
+                </button>
               )}
             </div>
           )}
