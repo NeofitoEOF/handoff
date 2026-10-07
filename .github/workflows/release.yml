@@ -46,7 +46,7 @@ jobs:
           RELEASE_TAG: ${{ steps.meta.outputs.tag }}
         run: |
           version="${RELEASE_TAG#v}"
-          awk -v heading="## ["$version"]" '
+          awk -v "heading=## [$version]" '
             $0 == heading || index($0, heading " - ") == 1 {capture=1; next}
             capture && /^## \[/ {exit}
             capture {print}
