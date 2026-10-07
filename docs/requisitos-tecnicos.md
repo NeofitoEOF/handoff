@@ -62,6 +62,44 @@ Regras de delegação:
 - Alçada opcional por valor: acima de X, exige segundo aprovador.
 - Toda mudança de setor, papel, convite ou link gera evento de auditoria.
 
+## Regras operacionais do fluxo
+
+Estas regras fecham as ambiguidades que normalmente aparecem quando um fluxo entre áreas sai do e-mail e vira sistema. Elas são regras de negócio, não detalhes de implementação.
+
+| ID | Regra operacional |
+| --- | --- |
+| RN-OP-01 | **Dono da solicitação:** o setor de origem é dono do pedido; o setor de destino é dono da resposta. O responsável individual executa a tarefa, mas o SLA pertence ao setor, não à pessoa. |
+| RN-OP-02 | **Prazo e atribuição:** o prazo começa quando a solicitação é aberta para o setor de destino, mesmo que o gestor ainda não tenha atribuído um responsável. O painel separa atraso de atribuição do atraso de execução. |
+| RN-OP-03 | **Reatribuição:** Gestor do Setor pode trocar o responsável a qualquer momento antes do fechamento. O rascunho e anexos permanecem; o responsável anterior perde permissão de edição, mas continua na trilha. |
+| RN-OP-04 | **Substituição de gestor:** um setor pode ter mais de um Gestor. Não se pode deixar um setor ativo sem Gestor; ausência, férias ou desligamento não podem bloquear solicitações. |
+| RN-OP-05 | **Devolução não reinicia o histórico:** ao devolver, o revisor informa motivo obrigatório por item/campo. O prazo original continua registrado e o revisor define um novo prazo de correção; ambos aparecem no SLA. |
+| RN-OP-06 | **Aprovação por item:** cada item pode ficar Pendente, Enviado, Aprovado ou Devolvido. A solicitação só fica Aprovada quando todos os itens obrigatórios estiverem aprovados. Itens já aprovados ficam bloqueados para edição enquanto os devolvidos são corrigidos. |
+| RN-OP-07 | **Maker-checker por pessoa, não por papel:** quem submeteu qualquer item não pode aprovar aquele mesmo item, mesmo que participe de outro setor ou tenha papel de Aprovador em outro contexto. |
+| RN-OP-08 | **Cancelamento:** somente o setor de origem (autor, Gestor ou Aprovador autorizado) pode cancelar uma solicitação não fechada; motivo é obrigatório. Cancelamento não apaga dados, anexos nem histórico. |
+| RN-OP-09 | **Retificação após fechamento:** solicitação fechada nunca é reaberta nem alterada. Correção posterior cria uma Retificação vinculada ao fechamento anterior, com novo ciclo de resposta/aprovação e preservação de todas as versões. |
+| RN-OP-10 | **Versão do modelo:** a solicitação fica presa à versão do modelo vigente no momento da abertura. Publicar uma versão nova nunca altera solicitações já abertas ou fechadas. |
+| RN-OP-11 | **Desativação, não exclusão:** usuário, setor, modelo e empresa com histórico operacional não são apagados pelo fluxo normal; são inativados. Setor com solicitações abertas só pode ser desativado após transferência ou encerramento das pendências. |
+| RN-OP-12 | **Evidência após envio:** adicionar, substituir ou remover evidência depois do envio devolve o item para revisão. Evidência usada em fechamento anterior permanece preservada. |
+| RN-OP-13 | **Competência:** modelos podem exigir uma chave de competência (mês, semana, folha, período fiscal etc.). A combinação modelo + setor destino + competência pode ser marcada como única para evitar duplicidade acidental. |
+| RN-OP-14 | **Coleta/campanha:** quando o mesmo pedido precisa ir para vários setores, o usuário cria uma coleta que gera solicitações-filhas independentes por setor. Cada filha tem responsável, SLA e aprovação próprios; a coleta mostra visão consolidada. |
+| RN-OP-15 | **Recorrência:** fluxos recorrentes geram uma nova solicitação/coleta por competência; nunca reciclam a solicitação do período anterior. A recorrência pode ser pausada sem apagar ocorrências já criadas. |
+| RN-OP-16 | **Convidado:** convidado interno sem conta e terceiro externo são tratados como participantes de uma solicitação específica, nunca como membros do setor. A empresa pode proibir convidados externos por política. |
+| RN-OP-17 | **Expiração e escalonamento:** nenhuma aprovação pode ficar aguardando indefinidamente. Solicitações vencidas continuam visíveis e editáveis conforme permissão, mas entram em atraso e disparam escalonamento ao Gestor; o prazo não some nem é renovado automaticamente. |
+| RN-OP-18 | **Responsabilidade registrada:** o fechamento distingue quem forneceu a informação, quem alterou, quem submeteu e quem aprovou. Aprovação confirma a revisão do conteúdo aprovado; não transfere a autoria do dado para o aprovador. |
+
+### Matriz de autoridade da solicitação
+
+| Ação | Setor de origem | Setor de destino |
+| --- | --- | --- |
+| Criar pedido | Sim | Não |
+| Alterar prazo antes da primeira resposta | Gestor/Aprovador autorizado | Não; pode solicitar ajuste |
+| Atribuir ou trocar responsável | Não | Gestor |
+| Preencher e anexar evidência | Não | Responsável/Membro autorizado |
+| Submeter resposta | Não | Responsável/Membro autorizado |
+| Aprovar/devolver | Aprovador/Gestor que não tenha preenchido o item | Não |
+| Cancelar antes do fechamento | Autor/Gestor/Aprovador autorizado, com motivo | Não |
+| Retificar depois do fechamento | Inicia nova retificação | Responde à retificação |
+
 ## Requisitos funcionais
 
 São 29 requisitos distribuídos em fases: Fase 1 (piloto, semanas 1–6), Fase 2 (adoção, 7–10), Fase 3 (venda, 11–14) e Depois (após os primeiros clientes). RF-25 a RF-29 entraram com a revisão do MVP.
@@ -76,12 +114,12 @@ São 29 requisitos distribuídos em fases: Fase 1 (piloto, semanas 1–6), Fase 
 | RF-06 | Modelos | Versionamento: modelo publicado é imutável; edição gera nova versão; solicitações antigas mantêm a versão original | 1 |
 | RF-07 | Modelos | Biblioteca de modelos prontos por setor, clonáveis (Fase 1 só o fluxo piloto) | 1–2 |
 | RF-08 | Solicitação | Criar solicitação a partir de modelo: setor de destino, prazo, instruções, anexos de referência; o gestor do destino atribui o responsável | 1 |
-| RF-09 | Solicitação | Ciclo de status: Rascunho → Aberta → Em preenchimento → Em revisão → Devolvida / Aprovada → Fechada; Cancelada a partir de qualquer estado não fechado | 1 |
+| RF-09 | Solicitação | Ciclo de status da solicitação: Rascunho → Aberta → Em preenchimento → Em revisão → Em correção / Aprovada → Fechada; Cancelada antes do fechamento. Estados dos itens são controlados separadamente conforme RN-OP-06 | 1 |
 | RF-10 | Preenchimento | Formulário para poucos itens | 1 |
 | RF-11 | Preenchimento | Grade em lote estilo planilha (colar do Excel, navegação por teclado) | Depois |
 | RF-12 | Preenchimento | Download de .xlsx pré-formatado do modelo e upload validado linha a linha, com relatório de erros por linha/coluna antes de aceitar | 1 |
 | RF-13 | Preenchimento | Anexos por item (PDF, XML, imagem, .xlsx) com hash SHA-256 registrado | 1 |
-| RF-14 | Revisão | Revisor aprova tudo, aprova parcialmente ou devolve com comentário preso ao item/campo | 1 |
+| RF-14 | Revisão | Revisão por item: aprovar ou devolver com comentário obrigatório; itens aprovados ficam bloqueados enquanto somente os devolvidos retornam para correção | 1 |
 | RF-15 | Revisão | Bloqueio maker-checker: quem preencheu não aprova | 1 |
 | RF-16 | Fechamento | Aprovação gera snapshot imutável + PDF de fechamento com hash e lista de evidências | 1 |
 | RF-17 | Auditoria | Linha do tempo por solicitação e por campo: quem, quando, antes, depois, origem (tela, upload, link) | 1 |
@@ -90,15 +128,19 @@ São 29 requisitos distribuídos em fases: Fase 1 (piloto, semanas 1–6), Fase 
 | RF-20 | Painel | Caixa de entrada única: "pedidos para mim", "pedidos do meu setor", "aguardando minha aprovação", atrasados | 1 |
 | RF-21 | Painel | Indicadores por setor: no prazo vs. atrasado, tempo médio de resposta, taxa de devolução | 2 |
 | RF-22 | Exportação | Exportar dados de solicitação para .xlsx e .csv; exportar trilha de auditoria | 1 |
-| RF-23 | Recorrência | Solicitação recorrente (mensal, semanal) gerada automaticamente | Depois |
+| RF-23 | Recorrência | Solicitação/coleta recorrente gera nova ocorrência por competência, preservando as anteriores; pode ser pausada sem apagar histórico | 2 |
 | RF-24 | API | API pública REST com token por empresa e webhooks (solicitação aprovada, atrasada) | Depois |
 | RF-25 | Preenchimento | Resposta por link sem conta, com código de 6 dígitos por e-mail; link expira no prazo da solicitação | 1 |
 | RF-26 | Modelos | Campos calculados simples (soma, subtração, multiplicação, percentual, total da coluna) e criar modelo a partir de um .xlsx enviado | 2 |
 | RF-27 | Importação | Mapeamento de colunas do .xlsx exportado do ERP, salvo por modelo, com sugestão por IA na primeira vez | 2 |
 | RF-28 | Integração | Login Microsoft (Entra ID) e avisos no Outlook e no Teams | 2 |
 | RF-29 | Cobrança | Cobrança por setor habilitado; usuários do setor e convidados por link não pagam | 3 |
+| RF-30 | Coletas | Criar uma coleta para distribuir o mesmo modelo/competência a vários setores, gerando solicitações-filhas independentes e visão consolidada | 2 |
+| RF-31 | Retificação | Corrigir conteúdo já fechado somente por nova retificação vinculada ao fechamento original; nunca reabrir ou sobrescrever snapshot aprovado | 1 |
+| RF-32 | Atribuição | Gestor pode reatribuir responsável preservando rascunho, evidências e trilha; SLA permanece do setor | 1 |
+| RF-33 | Escalonamento | Atraso sem resposta ou sem atribuição gera escalonamento ao Gestor; prazo original e novos prazos de correção permanecem visíveis | 1 |
 
-Ciclo de status (RF-09): a devolução volta para o preenchedor quantas vezes for preciso; só a aprovação por outro usuário leva ao fechamento imutável.
+Ciclo de status (RF-09): a devolução volta somente os itens rejeitados para correção; itens aprovados ficam bloqueados. A solicitação só chega a Aprovada quando todos os itens obrigatórios estiverem aprovados. Depois de Fechada, qualquer correção é feita por Retificação (RF-31), nunca por reabertura.
 
 ## Usabilidade e frontend
 
