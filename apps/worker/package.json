@@ -12,7 +12,8 @@
   "dependencies": {
     "nodemailer": "^10.0.15",
     "pg": "^8.16.3",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@aws-sdk/client-s3": "^3.922.0"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
