@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
 import { registerAuth } from "./auth.js";
 import { pool } from "./db.js";
@@ -11,6 +12,8 @@ import { itemRoutes } from "./modules/items/item.routes.js";
 import { reviewRoutes } from "./modules/reviews/review.routes.js";
 import { templateRoutes } from "./modules/templates/template.routes.js";
 import { closingRoutes } from "./modules/closing/closing.routes.js";
+import { importRoutes } from "./modules/imports/import.routes.js";
+import { evidenceRoutes } from "./modules/evidence/evidence.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -18,6 +21,12 @@ export async function buildApp() {
   });
 
   await registerAuth(app);
+  await app.register(multipart, {
+    limits: {
+      fileSize: 20 * 1024 * 1024,
+      files: 1,
+    },
+  });
 
   app.get("/health", async () => {
     await pool.query("SELECT 1");
@@ -32,6 +41,8 @@ export async function buildApp() {
   await app.register(reviewRoutes);
   await app.register(templateRoutes);
   await app.register(closingRoutes);
+  await app.register(importRoutes);
+  await app.register(evidenceRoutes);
   await app.register(requestRoutes);
 
   app.setErrorHandler((error, _request, reply) => {
