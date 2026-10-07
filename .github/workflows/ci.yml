@@ -56,6 +56,9 @@ jobs:
             sh -n "$file"
           done
 
+      - name: Validate GitHub Actions
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
+
       - run: pnpm -r typecheck
       - run: pnpm -r test
       - run: pnpm -r build
