@@ -30,12 +30,43 @@ export async function getPresignedDownloadUrl(
   key: string,
   expiresInSeconds = 300,
 ): Promise<string> {
+  return getPresignedDownloadUrlForBucket(
+    config.OBJECT_STORAGE_BUCKET,
+    key,
+    expiresInSeconds,
+  );
+}
+
+export async function getPresignedDownloadUrlForBucket(
+  bucket: string,
+  key: string,
+  expiresInSeconds = 300,
+): Promise<string> {
   return getSignedUrl(
     client,
     new GetObjectCommand({
-      Bucket: config.OBJECT_STORAGE_BUCKET,
+      Bucket: bucket,
       Key: key,
     }),
     { expiresIn: expiresInSeconds },
   );
+}
+
+export async function getObjectBuffer(
+  bucket: string,
+  key: string,
+): Promise<Buffer> {
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+  );
+
+  if (!response.Body) {
+    throw new Error("Object storage returned an empty body.");
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return Buffer.from(bytes);
 }
