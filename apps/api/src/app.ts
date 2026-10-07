@@ -66,6 +66,15 @@ export async function buildApp() {
     },
   });
 
+  app.get("/live", async () => {
+    return { status: "ok" };
+  });
+
+  app.get("/ready", async () => {
+    await pool.query("SELECT 1");
+    return { status: "ok" };
+  });
+
   app.get("/health", async () => {
     await pool.query("SELECT 1");
     return { status: "ok" };
