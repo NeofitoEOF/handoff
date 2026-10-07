@@ -3,6 +3,7 @@ import { scanBuffer } from "../../antivirus.js";
 import { withTenantTransaction } from "../../db.js";
 import { putObject } from "../../storage.js";
 import { validateXlsxBuffer, type XlsxTemplateField } from "../imports/xlsx-validator.js";
+import { loadDefaultImportMapping } from "../imports/import-mapping.service.js";
 import { withGuestSession } from "./guest.service.js";
 
 export async function guestValidateXlsx(input: {
@@ -27,15 +28,19 @@ export async function guestValidateXlsx(input: {
     const request = await withTenantTransaction(context.tenantId, async (client) => {
       const result = await client.query<{
         status: string;
+        template_version_id: string | null;
         schema_json: { fields: XlsxTemplateField[] } | null;
       }>(
-        `SELECT r.status, tv.schema_json
+        `SELECT r.status, r.template_version_id, tv.schema_json
            FROM requests r
            LEFT JOIN template_versions tv ON tv.id = r.template_version_id
           WHERE r.id = $1`,
         [context.requestId],
       );
-      return result.rows[0] ?? null;
+      const row = result.rows[0] ?? null;
+      if (!row) return null;
+      const columnMapping = await loadDefaultImportMapping(client, row.template_version_id);
+      return { ...row, columnMapping };
     });
 
     if (!request) return { kind: "not_found" as const };
@@ -44,7 +49,11 @@ export async function guestValidateXlsx(input: {
     }
     if (!request.schema_json) return { kind: "missing_template" as const };
 
-    const validation = await validateXlsxBuffer(input.buffer, request.schema_json);
+    const validation = await validateXlsxBuffer(
+      input.buffer,
+      request.schema_json,
+      request.columnMapping,
+    );
     if (validation.kind !== "validated") return validation;
 
     const sha256 = crypto.createHash("sha256").update(input.buffer).digest("hex");
