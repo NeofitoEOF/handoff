@@ -1,6 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager } from "../../authorization.js";
-import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
+import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
 
 export async function assignRequest(input: {
   tenantId: string;
@@ -91,6 +91,14 @@ export async function assignRequest(input: {
         message: "Uma solicitação foi atribuída a você.",
       });
     }
+
+    await enqueueTeams(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      title: "Responsável atribuído",
+      message: "Uma solicitação recebeu responsável no setor de destino.",
+      dedupeKey: `request-assigned-teams:${input.requestId}:${input.assigneeUserId}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
