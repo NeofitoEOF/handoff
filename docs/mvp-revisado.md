@@ -107,7 +107,7 @@ A devolução pode acontecer quantas vezes for preciso, sempre com comentário p
 
 A revisão de ferramentas de workflow e aprovação mostrou que boa parte da fricção não está em criar o formulário, mas no que acontece **depois**: responsável sai de férias, aprovação fica pendente, o pedido volta para correção, alguém precisa cancelar, vários setores recebem o mesmo pedido ou aparece um erro depois do fechamento. O MVP passa a tratar esses casos explicitamente.
 
-- **O setor, não a pessoa, responde pelo SLA.** Trocar o responsável não reinicia prazo nem apaga o rascunho.
+- **O setor, não a pessoa, responde pelo SLA.** Trocar o responsável não reinicia prazo nem apaga o rascunho. A reatribuição preserva evidências e autoria, exige motivo, retira imediatamente a capacidade de edição do responsável anterior e notifica o novo responsável com as pendências. Se alguém for desligado sem substituto definido, a solicitação entra em **Aguardando reatribuição** e escala para o Gestor, em vez de ser transferida silenciosamente.
 - **Devolução cria prazo de correção sem apagar o prazo original.** Assim o painel consegue separar atraso inicial de retrabalho.
 - **Aprovação é por item.** Uma planilha com 500 linhas pode ter 490 aprovadas e 10 devolvidas; as 490 ficam bloqueadas e somente as 10 voltam para edição.
 - **Fechamento nunca é reaberto.** Erro descoberto depois gera uma Retificação vinculada ao fechamento anterior.
