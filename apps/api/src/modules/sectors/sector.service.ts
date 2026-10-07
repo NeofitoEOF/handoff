@@ -279,3 +279,40 @@ export async function deactivateSector(input: {
     return { kind: "deactivated" as const };
   });
 }
+
+
+export async function listSectorMembers(input: {
+  tenantId: string;
+  actorUserId: string;
+  sectorId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const actorIsAdmin = await isTenantAdmin(client, input.tenantId, input.actorUserId);
+    const actorIsManager = await isSectorManager(client, input.sectorId, input.actorUserId);
+    const actorIsMember = await client.query(
+      `SELECT 1
+         FROM memberships
+        WHERE sector_id = $1
+          AND user_id = $2
+          AND active = true
+        LIMIT 1`,
+      [input.sectorId, input.actorUserId],
+    );
+
+    if (!actorIsAdmin && !actorIsManager && actorIsMember.rowCount !== 1) {
+      return { kind: "forbidden" as const };
+    }
+
+    const result = await client.query(
+      `SELECT
+          m.id, m.user_id, u.name, u.email, m.role, m.active, m.created_at
+         FROM memberships m
+         JOIN users u ON u.id = m.user_id
+        WHERE m.sector_id = $1
+        ORDER BY m.active DESC, m.role, u.name`,
+      [input.sectorId],
+    );
+
+    return { kind: "ok" as const, members: result.rows };
+  });
+}
