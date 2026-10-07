@@ -1,3 +1,4 @@
+import { applyItemCalculations } from "../templates/calculations.js";
 import ExcelJS from "exceljs";
 
 export type XlsxTemplateField = {
@@ -77,7 +78,12 @@ export async function validateXlsxBuffer(
       data[field.key] = value;
     }
 
-    if (valid) accepted.push({ itemKey: `xlsx-row-${rowNumber}`, data });
+    if (valid) {
+      accepted.push({
+        itemKey: `xlsx-row-${rowNumber}`,
+        data: applyItemCalculations(data, schema.fields as any),
+      });
+    }
   }
 
   return {
