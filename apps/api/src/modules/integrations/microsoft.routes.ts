@@ -5,6 +5,7 @@ import { createRefreshSession } from "../identity/identity.service.js";
 import {
   completeMicrosoftCallback,
   configureMicrosoftIntegration,
+  configureTeamsWebhook,
   consumeMicrosoftTicket,
   getMicrosoftIntegration,
   startMicrosoftLogin,
@@ -120,6 +121,31 @@ export async function microsoftRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(403).send({ message: "Somente Admin da Empresa pode ver a integração." });
       }
       return reply.send(result.integration);
+    },
+  );
+
+  app.put(
+    "/v1/admin/integrations/microsoft/teams",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const body = z.object({
+        webhookUrl: z.string().url().nullable(),
+      }).parse(request.body);
+
+      const result = await configureTeamsWebhook({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        webhookUrl: body.webhookUrl,
+      });
+
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ message: "Somente Admin da Empresa pode configurar Teams." });
+      }
+      if (result.kind === "microsoft_not_configured") {
+        return reply.code(409).send({ message: "Configure o Tenant ID do Microsoft Entra antes do Teams." });
+      }
+
+      return reply.send({ configured: result.configured });
     },
   );
 
