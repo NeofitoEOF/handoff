@@ -19,6 +19,7 @@ Este documento lista as variáveis e segredos esperados pelos workflows de provi
 - OCI_OBJECT_STORAGE_NAMESPACE
 - HANDOFF_DOMAIN
 - SERVICE_MONITOR_ENABLED
+- PROMETHEUS_RULE_ENABLED
 - SMOKE_API_URL
 - SMOKE_WEB_URL
 - STAGING_SMOKE_SUBDOMAIN
@@ -54,10 +55,11 @@ Este documento lista as variáveis e segredos esperados pelos workflows de provi
 2. revisão do plan;
 3. Terraform Apply manual com confirmação APPLY;
 4. release gera imagens;
-5. Deploy manual usa tag/SHA imutável;
-6. Helm espera rollout;
-7. smoke roda automaticamente;
-8. DAST pode ser executado após o deploy de staging.
+5. Release assina imagens por digest e publica manifesto/checksums;
+6. Deploy recebe somente a release tag, verifica checksums + Cosign e implanta por digest;
+7. Helm espera rollout;
+8. smoke roda automaticamente;
+9. DAST pode ser executado após o deploy de staging.
 
 
 ## Bootstrap do state remoto
