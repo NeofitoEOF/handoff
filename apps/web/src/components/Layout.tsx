@@ -10,6 +10,7 @@ export function Layout() {
         <Link to="/inbox" className="brand">Handoff</Link>
         <nav>
           <NavLink to="/inbox">Caixa de entrada</NavLink>
+          <NavLink to="/requests/new">Nova solicitação</NavLink>
           <NavLink to="/sectors">Setores</NavLink>
           <NavLink to="/audit">Auditoria</NavLink>
           <NavLink to="/admin">Administração</NavLink>
