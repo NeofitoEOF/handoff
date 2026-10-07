@@ -6,6 +6,8 @@ import {
   listTemplates,
   publishTemplateVersion,
 } from "./template.service.js";
+import { cloneLibraryTemplate, listTemplateLibrary } from "./template-library.service.js";
+import { inferTemplateFromXlsx } from "./template-inference.service.js";
 
 const fieldSchema = z.object({
   key: z.string().trim().min(1).max(80),
@@ -20,6 +22,76 @@ const fieldSchema = z.object({
 const schemaSchema = z.object({ fields: z.array(fieldSchema).min(1).max(200) });
 
 export async function templateRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/v1/template-library", { preHandler: app.authenticate }, async () => {
+    return { data: await listTemplateLibrary() };
+  });
+
+  app.post(
+    "/v1/sectors/:sectorId/templates/clone-library/:libraryId",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({
+        sectorId: z.string().uuid(),
+        libraryId: z.string().uuid(),
+      }).parse(request.params);
+      const body = z.object({
+        name: z.string().trim().min(2).max(160).optional(),
+      }).parse(request.body ?? {});
+
+      const result = await cloneLibraryTemplate({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        sectorId: params.sectorId,
+        libraryId: params.libraryId,
+        ...(body.name ? { name: body.name } : {}),
+      });
+
+      if (result.kind === "forbidden") return reply.code(403).send({ message: "Somente Gestor pode clonar modelo." });
+      if (result.kind === "not_found") return reply.code(404).send({ message: "Modelo da biblioteca não encontrado." });
+      return reply.code(201).send(result.version);
+    },
+  );
+
+  app.post(
+    "/v1/sectors/:sectorId/templates/from-xlsx",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = z.object({ sectorId: z.string().uuid() }).parse(request.params);
+      const file = await request.file();
+      if (!file) return reply.code(400).send({ message: "Arquivo XLSX obrigatório." });
+      if (!file.filename.toLowerCase().endsWith(".xlsx")) {
+        return reply.code(415).send({ message: "Apenas arquivos .xlsx são aceitos." });
+      }
+
+      const inferred = await inferTemplateFromXlsx(await file.toBuffer());
+      if (inferred.kind === "file_too_large") return reply.code(413).send({ message: "Arquivo excede 20 MB." });
+      if (inferred.kind === "empty_workbook") return reply.code(422).send({ message: "Planilha sem worksheet." });
+      if (inferred.kind === "too_many_columns") return reply.code(422).send({ message: "Limite de 200 colunas excedido." });
+      if (inferred.kind === "no_headers") return reply.code(422).send({ message: "Cabeçalhos não encontrados na primeira linha." });
+
+      const name = file.filename.replace(/\.xlsx$/i, "").slice(0, 160) || "Modelo importado";
+      const created = await createTemplate({
+        tenantId: request.user.tenantId,
+        actorUserId: request.user.sub,
+        sectorId: params.sectorId,
+        name,
+        description: "Modelo inferido a partir de planilha enviada.",
+        schema: inferred.schema,
+      });
+
+      if (created.kind === "forbidden") {
+        return reply.code(403).send({ message: "Somente Gestor do setor pode criar modelo." });
+      }
+
+      return reply.code(201).send({
+        version: created.version,
+        inference: {
+          sampleRows: inferred.sampleRows,
+          schema: inferred.schema,
+        },
+      });
+    },
+  );
   app.get("/v1/sectors/:sectorId/templates", { preHandler: app.authenticate }, async (request, reply) => {
     const params = z.object({ sectorId: z.string().uuid() }).parse(request.params);
     const result = await listTemplates({
