@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "../../config.js";
-import { exportTenantData, provisionTenant, suspendTenant } from "./tenant.service.js";
+import { exportTenantData, provisionTenant, resolveTenantBySubdomain, suspendTenant } from "./tenant.service.js";
 
 function platformAuthorized(request: FastifyRequest): boolean {
   const supplied = request.headers["x-platform-admin-key"];
@@ -14,6 +14,18 @@ function platformAuthorized(request: FastifyRequest): boolean {
 }
 
 export async function tenantRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/v1/public/tenants/resolve", async (request, reply) => {
+    const query = z.object({
+      subdomain: z.string().trim().regex(/^[a-z0-9-]{3,63}$/),
+    }).parse(request.query);
+
+    const tenant = await resolveTenantBySubdomain(query.subdomain);
+    if (!tenant) {
+      return reply.code(404).send({ message: "Empresa não encontrada." });
+    }
+
+    return reply.send(tenant);
+  });
   app.post("/v1/platform/tenants", async (request, reply) => {
     if (!platformAuthorized(request)) {
       return reply.code(401).send({ message: "Credencial de provisionamento inválida." });
