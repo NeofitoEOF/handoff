@@ -59,5 +59,17 @@ jobs:
       - name: Lint Helm chart
         run: helm lint infra/helm/handoff
 
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt
+        run: terraform -chdir=infra/terraform/oci fmt -check
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=infra/terraform/oci init -backend=false
+          terraform -chdir=infra/terraform/oci validate
+
       - name: Restore smoke test
         run: sh scripts/restore-smoke.sh
