@@ -244,3 +244,15 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Terraform init/validate no CI
 - ✅ IaC validado com sucesso no pipeline
 - 🟡 Terraform apply real depende de tenancy/compartment/subnet/credenciais OCI
+
+
+## Prontidão de deploy e go-live
+
+- ✅ Smoke test não destrutivo para API e frontend
+- ✅ Smoke test valida health, proteção de métricas e resolução de tenant
+- ✅ Smoke autenticado opcional valida login e leitura da inbox
+- ✅ Workflow manual/agendado para smoke de staging
+- ✅ Checklist de go-live/corte/rollback documentado
+- ✅ Scripts shell operacionais validados no CI
+- 🟡 Execução real do smoke/DAST depende das URLs e credenciais do ambiente de staging
+- 🟡 WAF, DNS, TLS, Vault e recursos OCI precisam ser aplicados/confirmados no ambiente real
