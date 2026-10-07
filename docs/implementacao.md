@@ -258,3 +258,20 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Scripts shell operacionais validados no CI
 - 🟡 Execução real do smoke/DAST depende das URLs e credenciais do ambiente de staging
 - 🟡 DNS/TLS/Vault/OKE/PostgreSQL/Object Storage/WAF precisam ser aplicados e confirmados no ambiente real
+
+
+## API pública e webhooks
+
+- ✅ API key por tenant com token exibido uma única vez e SHA-256 no banco
+- ✅ Escopo inicial `requests:read`
+- ✅ Revogação, expiração e last-used de API keys
+- ✅ REST pública para listar e consultar solicitações
+- ✅ Gestão de webhooks pelo Admin da Empresa
+- ✅ Segredo de webhook cifrado AES-256-GCM
+- ✅ Eventos `request.approved` e `request.overdue`
+- ✅ Outbox idempotente e retry com backoff
+- ✅ Assinatura HMAC-SHA256 com event id/timestamp
+- ✅ Bloqueio de URLs locais/privadas literais
+- ✅ Testes de integração em PostgreSQL real
+- ✅ Contrato documentado em `docs/api-publica.md`
+- ✅ CI completo verde após implementação
