@@ -174,6 +174,7 @@ async function materializeRecurrences(tenantId: string) {
         ORDER BY next_run_at
         LIMIT 20
         FOR UPDATE SKIP LOCKED`,
+      [config.WORKER_PROCESSING_LEASE_MINUTES],
     );
 
     for (const recurrence of recurrences.rows) {
@@ -276,18 +277,23 @@ async function processClosureDocuments(tenantId: string) {
       `SELECT cd.id, cd.request_id, cd.snapshot_id, s.content, cd.attempts
          FROM closure_documents cd
          JOIN snapshots s ON s.id = cd.snapshot_id
-        WHERE cd.status IN ('PENDING', 'FAILED')
-          AND cd.available_at <= now()
+        WHERE (
+          (cd.status IN ('PENDING', 'FAILED') AND cd.available_at <= now())
+          OR
+          (cd.status = 'PROCESSING'
+            AND cd.processing_started_at <= now() - make_interval(mins => $1))
+        )
           AND cd.attempts < 5
         ORDER BY cd.created_at
         LIMIT 5
         FOR UPDATE OF cd SKIP LOCKED`,
-    );
+    , [config.WORKER_PROCESSING_LEASE_MINUTES]);
 
     if (result.rows.length) {
       await client.query(
         `UPDATE closure_documents
-            SET status = 'PROCESSING'
+            SET status = 'PROCESSING',
+                processing_started_at = now()
           WHERE id = ANY($1::uuid[])`,
         [result.rows.map((row) => row.id)],
       );
@@ -314,7 +320,8 @@ async function processClosureDocuments(tenantId: string) {
                   pdf_sha256 = $3,
                   attempts = attempts + 1,
                   generated_at = now(),
-                  last_error = NULL
+                  last_error = NULL,
+                  processing_started_at = NULL
             WHERE id = $1`,
           [document.id, stored.storageKey, stored.sha256],
         );
@@ -341,6 +348,7 @@ async function processClosureDocuments(tenantId: string) {
               SET status = 'FAILED',
                   attempts = attempts + 1,
                   last_error = $2,
+                  processing_started_at = NULL,
                   available_at = now() + make_interval(mins => LEAST(60, (attempts + 1) * 5))
             WHERE id = $1`,
           [document.id, message.slice(0, 2000)],
@@ -368,8 +376,12 @@ async function processTeamsOutbox(tenantId: string) {
               i.teams_webhook_tag
          FROM teams_outbox o
          JOIN tenant_microsoft_integrations i ON i.tenant_id = o.tenant_id
-        WHERE o.status IN ('PENDING', 'FAILED')
-          AND o.available_at <= now()
+        WHERE (
+          (o.status IN ('PENDING', 'FAILED') AND o.available_at <= now())
+          OR
+          (o.status = 'PROCESSING'
+            AND o.processing_started_at <= now() - make_interval(mins => $1))
+        )
           AND o.attempts < 5
           AND i.enabled = true
           AND i.teams_webhook_ciphertext IS NOT NULL
@@ -378,12 +390,14 @@ async function processTeamsOutbox(tenantId: string) {
         ORDER BY o.created_at
         LIMIT 20
         FOR UPDATE OF o SKIP LOCKED`,
+      [config.WORKER_PROCESSING_LEASE_MINUTES],
     );
 
     if (result.rows.length) {
       await client.query(
         `UPDATE teams_outbox
-            SET status = 'PROCESSING'
+            SET status = 'PROCESSING',
+                processing_started_at = now()
           WHERE id = ANY($1::uuid[])`,
         [result.rows.map((row) => row.id)],
       );
@@ -412,7 +426,9 @@ async function processTeamsOutbox(tenantId: string) {
               SET status = 'SENT',
                   sent_at = now(),
                   attempts = attempts + 1,
-                  last_error = NULL
+                  last_error = NULL,
+                  processing_started_at = NULL,
+                  processing_started_at = NULL
             WHERE id = $1`,
           [event.id],
         );
@@ -425,6 +441,7 @@ async function processTeamsOutbox(tenantId: string) {
               SET status = 'FAILED',
                   attempts = attempts + 1,
                   last_error = $2,
+                  processing_started_at = NULL,
                   available_at = now() + make_interval(mins => LEAST(60, (attempts + 1) * 5))
             WHERE id = $1`,
           [event.id, message.slice(0, 2000)],
@@ -450,19 +467,25 @@ async function processWebhookOutbox(tenantId: string) {
               w.url, w.secret_ciphertext, w.secret_iv, w.secret_tag
          FROM webhook_outbox o
          JOIN webhooks w ON w.id = o.webhook_id
-        WHERE o.status IN ('PENDING', 'FAILED')
-          AND o.available_at <= now()
+        WHERE (
+          (o.status IN ('PENDING', 'FAILED') AND o.available_at <= now())
+          OR
+          (o.status = 'PROCESSING'
+            AND o.processing_started_at <= now() - make_interval(mins => $1))
+        )
           AND o.attempts < 8
           AND w.active = true
         ORDER BY o.created_at
         LIMIT 20
         FOR UPDATE OF o SKIP LOCKED`,
+      [config.WORKER_PROCESSING_LEASE_MINUTES],
     );
 
     if (result.rows.length) {
       await client.query(
         `UPDATE webhook_outbox
-            SET status = 'PROCESSING'
+            SET status = 'PROCESSING',
+                processing_started_at = now()
           WHERE id = ANY($1::uuid[])`,
         [result.rows.map((row) => row.id)],
       );
@@ -506,6 +529,7 @@ async function processWebhookOutbox(tenantId: string) {
               SET status = 'FAILED',
                   attempts = attempts + 1,
                   last_error = $2,
+                  processing_started_at = NULL,
                   available_at = now() + make_interval(mins => LEAST(60, power(2, LEAST(attempts, 5))::int))
             WHERE id = $1`,
           [event.id, message.slice(0, 2000)],
@@ -662,8 +686,12 @@ async function processOutbox(tenantId: string) {
     }>(
       `SELECT id, recipient_email, subject, body_text, attempts
          FROM email_outbox
-        WHERE status IN ('PENDING', 'FAILED')
-          AND available_at <= now()
+        WHERE (
+          (status IN ('PENDING', 'FAILED') AND available_at <= now())
+          OR
+          (status = 'PROCESSING'
+            AND processing_started_at <= now() - make_interval(mins => $1))
+        )
           AND attempts < 5
         ORDER BY created_at
         LIMIT 20
@@ -673,7 +701,8 @@ async function processOutbox(tenantId: string) {
     if (result.rows.length) {
       await client.query(
         `UPDATE email_outbox
-            SET status = 'PROCESSING'
+            SET status = 'PROCESSING',
+                processing_started_at = now()
           WHERE id = ANY($1::uuid[])`,
         [result.rows.map((x) => x.id)],
       );
@@ -699,7 +728,11 @@ async function processOutbox(tenantId: string) {
       await withTenant(tenantId, async (client) => {
         await client.query(
           `UPDATE email_outbox
-              SET status = 'SENT', sent_at = now(), attempts = attempts + 1, last_error = NULL
+              SET status = 'SENT',
+                  sent_at = now(),
+                  attempts = attempts + 1,
+                  last_error = NULL,
+                  processing_started_at = NULL
             WHERE id = $1`,
           [email.id],
         );
@@ -712,6 +745,7 @@ async function processOutbox(tenantId: string) {
               SET status = 'FAILED',
                   attempts = attempts + 1,
                   last_error = $2,
+                  processing_started_at = NULL,
                   available_at = now() + make_interval(mins => LEAST(60, (attempts + 1) * 5))
             WHERE id = $1`,
           [email.id, message.slice(0, 2000)],
