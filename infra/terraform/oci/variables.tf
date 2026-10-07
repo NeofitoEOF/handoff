@@ -103,3 +103,16 @@ variable "waf_requests_per_minute" {
   type    = number
   default = 600
 }
+
+
+variable "audit_anchor_retention_days" {
+  type    = number
+  default = 3650
+}
+
+variable "audit_anchor_retention_rule_lock_at" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "RFC3339 time that permanently locks the audit anchor retention rule. Set only after validating the production policy."
+}
