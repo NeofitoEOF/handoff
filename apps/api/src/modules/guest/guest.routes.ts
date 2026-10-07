@@ -32,8 +32,8 @@ export async function guestRoutes(app: FastifyInstance): Promise<void> {
         case "created":
           return reply.code(201).send({
             guestLinkId: result.guestLinkId,
-            linkToken: result.token,
             expiresAt: result.expiresAt,
+            ...(config.NODE_ENV !== "production" ? { devLinkToken: result.token } : {}),
           });
       }
     },
