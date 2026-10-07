@@ -31,6 +31,7 @@ import { requestExportRoutes } from "./modules/exports/request-export.routes.js"
 import { commentRoutes } from "./modules/comments/comment.routes.js";
 import { microsoftRoutes } from "./modules/integrations/microsoft.routes.js";
 import { importMappingRoutes } from "./modules/imports/import-mapping.routes.js";
+import { billingRoutes } from "./modules/billing/billing.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -79,6 +80,7 @@ export async function buildApp() {
   await app.register(commentRoutes);
   await app.register(microsoftRoutes);
   await app.register(importMappingRoutes);
+  await app.register(billingRoutes);
   await app.register(sectorRoutes);
   await app.register(requestCreateRoutes);
   await app.register(requestAssignmentRoutes);
