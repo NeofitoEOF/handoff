@@ -26,6 +26,10 @@ export async function buildApp() {
       });
     }
 
+    if ("statusCode" in error && typeof error.statusCode === "number") {
+      return reply.code(error.statusCode).send({ message: error.message });
+    }
+
     app.log.error(error);
     return reply.code(500).send({ message: "Erro interno." });
   });
