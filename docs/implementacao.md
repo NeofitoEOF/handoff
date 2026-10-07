@@ -390,3 +390,15 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Dedupe key impede enfileiramento duplicado do mesmo evento de negócio
 - ✅ Testes de integração cobrem concorrência, lease expirado, lease fresco e deduplicação
 - ✅ Typecheck, testes, builds, Helm, Terraform e restore smoke verdes após os testes de resiliência
+
+
+## Dead-letter operacional
+
+- ✅ Admin lista falhas esgotadas de e-mail, Teams, webhook e PDF de fechamento
+- ✅ Somente Admin da Empresa pode consultar/reprocessar
+- ✅ Reprocessamento exige justificativa
+- ✅ Reprocessamento zera attempts, limpa erro/lease e retorna item para PENDING
+- ✅ Ação de reprocessamento registrada em audit_events
+- ✅ Tela de Administração mostra falhas esgotadas e permite reenfileirar
+- ✅ Teste de integração cobre autorização, listagem, retry e auditoria
+- ✅ CI, Security e E2E verdes após implementação
