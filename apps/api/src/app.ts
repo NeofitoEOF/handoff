@@ -9,6 +9,7 @@ import { sectorRoutes } from "./modules/sectors/sector.routes.js";
 import { requestOperationRoutes } from "./modules/requests/request-operations.routes.js";
 import { itemRoutes } from "./modules/items/item.routes.js";
 import { reviewRoutes } from "./modules/reviews/review.routes.js";
+import { templateRoutes } from "./modules/templates/template.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -28,6 +29,7 @@ export async function buildApp() {
   await app.register(requestOperationRoutes);
   await app.register(itemRoutes);
   await app.register(reviewRoutes);
+  await app.register(templateRoutes);
   await app.register(requestRoutes);
 
   app.setErrorHandler((error, _request, reply) => {
