@@ -16,8 +16,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ CI com typecheck e testes
 - ✅ Refresh token rotativo
 - ✅ Login/senha + Argon2id
-- ⏳ MFA/TOTP
-- ⏳ Recuperação de senha
+- ✅ MFA/TOTP com segredo cifrado
+- ✅ Recuperação de senha backend; envio por e-mail pendente
 
 ## Multi-tenant e empresa
 
