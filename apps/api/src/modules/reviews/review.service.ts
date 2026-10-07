@@ -1,4 +1,5 @@
 import { withTenantTransaction } from "../../db.js";
+import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
 
 async function canReview(
   client: import("../../db.js").DbClient,
@@ -63,6 +64,60 @@ async function recalculateRequestStatus(
   return nextStatus;
 }
 
+async function notifyRequestParticipant(
+  client: import("../../db.js").DbClient,
+  input: {
+    tenantId: string;
+    requestId: string;
+    userId?: string | null;
+    guestLinkId?: string | null;
+    type: string;
+    subject: string;
+    message: string;
+    dedupeKey: string;
+  },
+) {
+  if (input.userId) {
+    const user = await client.query<{ email: string }>(
+      `SELECT email FROM users WHERE id = $1 AND active = true LIMIT 1`,
+      [input.userId],
+    );
+    if (user.rows[0]) {
+      await enqueueEmail(client, {
+        tenantId: input.tenantId,
+        requestId: input.requestId,
+        recipientEmail: user.rows[0].email,
+        subject: input.subject,
+        bodyText: input.message,
+        dedupeKey: input.dedupeKey,
+      });
+      await createInAppNotification(client, {
+        tenantId: input.tenantId,
+        userId: input.userId,
+        requestId: input.requestId,
+        type: input.type,
+        title: input.subject.replace("[Handoff] ", ""),
+        message: input.message,
+      });
+    }
+  } else if (input.guestLinkId) {
+    const guest = await client.query<{ email: string }>(
+      `SELECT email FROM guest_links WHERE id = $1 LIMIT 1`,
+      [input.guestLinkId],
+    );
+    if (guest.rows[0]) {
+      await enqueueEmail(client, {
+        tenantId: input.tenantId,
+        requestId: input.requestId,
+        recipientEmail: guest.rows[0].email,
+        subject: input.subject,
+        bodyText: input.message,
+        dedupeKey: input.dedupeKey,
+      });
+    }
+  }
+}
+
 export async function approveItem(input: {
   tenantId: string;
   requestId: string;
@@ -78,8 +133,9 @@ export async function approveItem(input: {
       id: string;
       status: string;
       submitted_by: string | null;
+      submitted_guest_link_id: string | null;
     }>(
-      `SELECT id, status, submitted_by
+      `SELECT id, status, submitted_by, submitted_guest_link_id
          FROM request_items
         WHERE id = $1 AND request_id = $2
         FOR UPDATE`,
@@ -104,6 +160,45 @@ export async function approveItem(input: {
     );
 
     const requestStatus = await recalculateRequestStatus(client, input.requestId);
+
+    await notifyRequestParticipant(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      userId: item.submitted_by,
+      guestLinkId: item.submitted_guest_link_id,
+      type: "ITEM_APPROVED",
+      subject: "[Handoff] Item aprovado",
+      message: "Um item enviado por você foi aprovado.",
+      dedupeKey: `request:${input.requestId}:item:${input.itemId}:approved`,
+    });
+
+    if (requestStatus === "APPROVED") {
+      const creator = await client.query<{ created_by: string; email: string }>(
+        `SELECT r.created_by, u.email
+           FROM requests r
+           JOIN users u ON u.id = r.created_by
+          WHERE r.id = $1`,
+        [input.requestId],
+      );
+      if (creator.rows[0]) {
+        await enqueueEmail(client, {
+          tenantId: input.tenantId,
+          requestId: input.requestId,
+          recipientEmail: creator.rows[0].email,
+          subject: "[Handoff] Solicitação totalmente aprovada",
+          bodyText: "Todos os itens da solicitação foram aprovados e ela está pronta para fechamento.",
+          dedupeKey: `request:${input.requestId}:fully-approved`,
+        });
+        await createInAppNotification(client, {
+          tenantId: input.tenantId,
+          userId: creator.rows[0].created_by,
+          requestId: input.requestId,
+          type: "REQUEST_APPROVED",
+          title: "Solicitação aprovada",
+          message: "Todos os itens foram aprovados e a solicitação está pronta para fechamento.",
+        });
+      }
+    }
 
     await client.query(
       `INSERT INTO audit_events
@@ -141,8 +236,9 @@ export async function returnItem(input: {
       id: string;
       status: string;
       submitted_by: string | null;
+      submitted_guest_link_id: string | null;
     }>(
-      `SELECT id, status, submitted_by
+      `SELECT id, status, submitted_by, submitted_guest_link_id
          FROM request_items
         WHERE id = $1 AND request_id = $2
         FOR UPDATE`,
@@ -167,6 +263,17 @@ export async function returnItem(input: {
     );
 
     const requestStatus = await recalculateRequestStatus(client, input.requestId);
+
+    await notifyRequestParticipant(client, {
+      tenantId: input.tenantId,
+      requestId: input.requestId,
+      userId: item.submitted_by,
+      guestLinkId: item.submitted_guest_link_id,
+      type: "ITEM_RETURNED",
+      subject: "[Handoff] Item devolvido para correção",
+      message: `Um item foi devolvido. Motivo: ${input.comment}. Novo prazo: ${input.correctionDueAt.toISOString()}.`,
+      dedupeKey: `request:${input.requestId}:item:${input.itemId}:returned:${input.correctionDueAt.toISOString()}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
