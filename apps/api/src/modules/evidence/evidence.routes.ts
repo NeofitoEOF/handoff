@@ -1,8 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { uploadEvidence } from "./evidence.service.js";
+import { listEvidence, uploadEvidence } from "./evidence.service.js";
 
 export async function evidenceRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/v1/requests/:id/evidence", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const result = await listEvidence({
+      tenantId: request.user.tenantId,
+      requestId: params.id,
+      actorUserId: request.user.sub,
+    });
+    if (result.kind === "not_found") {
+      return reply.code(404).send({ message: "Solicitação não encontrada ou sem acesso." });
+    }
+    return reply.send({ data: result.data });
+  });
   app.post("/v1/requests/:id/evidence", { preHandler: app.authenticate }, async (request, reply) => {
     const params = z.object({ id: z.string().uuid() }).parse(request.params);
     const file = await request.file();
