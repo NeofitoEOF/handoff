@@ -8,6 +8,7 @@ import { GuestPage } from "./pages/GuestPage";
 import { InboxPage } from "./pages/InboxPage";
 import { InvitePage } from "./pages/InvitePage";
 import { LoginPage } from "./pages/LoginPage";
+import { MicrosoftCallbackPage } from "./pages/MicrosoftCallbackPage";
 import { NewRequestPage } from "./pages/NewRequestPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { RequestPage } from "./pages/RequestPage";
@@ -21,6 +22,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/microsoft/callback" element={<MicrosoftCallbackPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/invite" element={<InvitePage />} />
