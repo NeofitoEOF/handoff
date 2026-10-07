@@ -2,7 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   exportTenantAudit,
+  getAuditAnchorDownload,
   getRequestTimeline,
+  listAuditAnchors,
+  verifyAuditAnchors,
   verifyTenantAuditChain,
 } from "./audit.service.js";
 
@@ -89,4 +92,56 @@ export async function auditRoutes(app: FastifyInstance): Promise<void> {
       lastHash: result.lastHash,
     });
   });
+
+  app.get("/v1/audit/anchors", { preHandler: app.authenticate }, async (request, reply) => {
+    const result = await listAuditAnchors({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+
+    if (result.kind === "forbidden") {
+      return reply.code(403).send({ message: "Somente Admin/Auditor pode listar âncoras." });
+    }
+
+    return reply.send({ data: result.data });
+  });
+
+  app.get("/v1/audit/anchors/verify", { preHandler: app.authenticate }, async (request, reply) => {
+    const result = await verifyAuditAnchors({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+
+    if (result.kind === "forbidden") {
+      return reply.code(403).send({ message: "Somente Admin/Auditor pode verificar âncoras." });
+    }
+
+    return reply.code(result.valid ? 200 : 409).send({
+      valid: result.valid,
+      anchors: result.anchors,
+    });
+  });
+
+  app.get("/v1/audit/anchors/:id/download", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const result = await getAuditAnchorDownload({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+      anchorId: params.id,
+    });
+
+    if (result.kind === "forbidden") {
+      return reply.code(403).send({ message: "Somente Admin/Auditor pode baixar âncoras." });
+    }
+    if (result.kind === "not_found") {
+      return reply.code(404).send({ message: "Âncora não encontrada." });
+    }
+
+    return reply.send({
+      url: result.url,
+      expiresIn: result.expiresIn,
+      anchorDate: result.anchorDate,
+    });
+  });
+
 }
