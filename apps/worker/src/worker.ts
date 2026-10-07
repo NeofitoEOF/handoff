@@ -427,7 +427,6 @@ async function processTeamsOutbox(tenantId: string) {
                   sent_at = now(),
                   attempts = attempts + 1,
                   last_error = NULL,
-                  processing_started_at = NULL,
                   processing_started_at = NULL
             WHERE id = $1`,
           [event.id],
@@ -516,7 +515,8 @@ async function processWebhookOutbox(tenantId: string) {
               SET status = 'SENT',
                   sent_at = now(),
                   attempts = attempts + 1,
-                  last_error = NULL
+                  last_error = NULL,
+                  processing_started_at = NULL
             WHERE id = $1`,
           [event.id],
         );
@@ -696,6 +696,7 @@ async function processOutbox(tenantId: string) {
         ORDER BY created_at
         LIMIT 20
         FOR UPDATE SKIP LOCKED`,
+      [config.WORKER_PROCESSING_LEASE_MINUTES],
     );
 
     if (result.rows.length) {
