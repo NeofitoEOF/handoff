@@ -25,7 +25,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Usuário global
 - ✅ Vínculo usuário × tenant com papel ADMIN/AUDITOR/USER
 - ✅ RLS nas tabelas tenant-scoped criadas até aqui
-- 🟡 Teste automatizado de vazamento entre tenants implementado com usuário sem BYPASSRLS; aguardando validação do CI
+- ✅ Teste automatizado de vazamento entre tenants com usuário sem BYPASSRLS validado no CI
 - ✅ Cadastro assistido da empresa via endpoint interno de provisionamento
 - ✅ Suspensão/inativação de tenant com revogação de sessões
 - ✅ Exportação completa do tenant
@@ -105,7 +105,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Proteção append-only por trigger
 - ✅ Timeline por solicitação/item/evidência/importação
 - ✅ Exportação CSV da trilha
-- ⏳ Hash encadeado opcional
+- ✅ Hash encadeado por tenant + verificação de integridade + teste de integração
 
 ## Notificações, painel e integrações
 
@@ -120,7 +120,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 ## Frontend
 
 - ✅ React + Vite
-- ⏳ Login
+- ✅ Login por senha + MFA + Microsoft + recuperação de senha
 - ✅ Caixa de entrada
 - ✅ Solicitação completa: criar, atribuir, preencher, importar, evidência, exportar, fechar/retificar
 - ✅ Revisão parcial por item
