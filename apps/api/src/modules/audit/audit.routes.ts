@@ -1,10 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { exportTenantAudit, getRequestTimeline } from "./audit.service.js";
+import { exportTenantAudit, getRequestTimeline, verifyTenantAuditChain } from "./audit.service.js";
 
 function csvEscape(value: unknown): string {
   const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
   return `"${text.replaceAll('"', '""')}"`;
+  app.get("/v1/audit/verify", { preHandler: app.authenticate }, async (request, reply) => {
+    const result = await verifyTenantAuditChain({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+
+    if (result.kind === "forbidden") {
+      return reply.code(403).send({ message: "Somente Admin/Auditor pode verificar a auditoria." });
+    }
+
+    if (result.kind === "invalid") {
+      return reply.code(409).send({
+        valid: false,
+        ...result,
+      });
+    }
+
+    return reply.send({
+      valid: true,
+      eventCount: result.eventCount,
+      lastHash: result.lastHash,
+    });
+  });
 }
 
 export async function auditRoutes(app: FastifyInstance): Promise<void> {
