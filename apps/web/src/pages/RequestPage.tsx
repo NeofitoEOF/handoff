@@ -14,6 +14,18 @@ type ImportPreview = {
   errors: Array<{ row: number; field: string; message: string }>;
 };
 
+type Evidence = {
+  id: string;
+  itemId: string | null;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  createdAt: string;
+  uploadedBy: string;
+  downloadUrl: string;
+};
+
 type SectorMember = {
   user_id: string;
   name: string;
@@ -55,6 +67,12 @@ export function RequestPage() {
   const items = useQuery({
     queryKey: ["request-items", id],
     queryFn: () => api<{ data: RequestItem[] }>(`/v1/requests/${id}/items`),
+    enabled: !!id,
+  });
+
+  const evidence = useQuery({
+    queryKey: ["evidence", id],
+    queryFn: () => api<{ data: Evidence[] }>(`/v1/requests/${id}/evidence`),
     enabled: !!id,
   });
 
