@@ -25,6 +25,8 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
 
     switch (result.kind) {
       case "file_too_large": return reply.code(413).send({ message: "Arquivo excede 20 MB." });
+      case "malware_detected": return reply.code(422).send({ message: "Arquivo rejeitado pelo antivírus.", signature: result.signature });
+      case "antivirus_unavailable": return reply.code(503).send({ message: "Antivírus indisponível. O arquivo não foi persistido." });
       case "not_found": return reply.code(404).send({ message: "Solicitação não encontrada." });
       case "forbidden": return reply.code(403).send({ message: "Sem permissão para importar." });
       case "invalid_state": return reply.code(409).send({ message: "Estado não permite importação.", status: result.status });
