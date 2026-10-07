@@ -165,3 +165,25 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Criar modelo a partir de XLSX
 - ✅ Mapeamento de cabeçalhos do ERP salvo por modelo
 - ✅ Sugestão inicial de mapeamento por similaridade/sinônimos com confiança
+
+
+## Infraestrutura e operação
+
+- ✅ Dockerfile da API
+- ✅ Dockerfile do worker
+- ✅ Dockerfile do frontend com NGINX non-root
+- ✅ Helm chart para Kubernetes/OKE
+- ✅ Deployments de API, web e worker
+- ✅ Services e Ingress com domínio raiz, wildcard de tenants e subdomínio da API
+- ✅ TLS preparado para cert-manager
+- ✅ Job de migration antes de install/upgrade
+- ✅ Readiness/liveness probes para API e web
+- ✅ HPA inicial para API e worker
+- ✅ Release por tag com publicação das três imagens no GHCR
+- ✅ Manifesto Argo CD para GitOps
+- ✅ Métricas Prometheus básicas em `/internal/metrics`
+- ✅ Endpoint de métricas protegido por Bearer token em produção
+- ✅ ServiceMonitor opcional no Helm
+- ✅ CI ampliado com build dos apps, build das imagens e `helm lint`
+- 🟡 Segredos via OCI Vault/External Secrets — chart preparado; provisionamento depende do cluster/conta OCI
+- 🟡 OKE, PostgreSQL gerenciado, Object Storage, SMTP e demais serviços OCI — manifests/aplicação preparados; provisionamento da conta cloud é externo ao repositório
