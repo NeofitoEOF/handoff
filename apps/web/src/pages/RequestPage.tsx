@@ -14,6 +14,15 @@ type ImportPreview = {
   errors: Array<{ row: number; field: string; message: string }>;
 };
 
+type RequestComment = {
+  id: string;
+  itemId: string | null;
+  fieldKey: string | null;
+  text: string;
+  createdAt: string;
+  author: string;
+};
+
 type Evidence = {
   id: string;
   itemId: string | null;
@@ -57,6 +66,8 @@ export function RequestPage() {
   const [message, setMessage] = useState("");
   const [localError, setLocalError] = useState("");
   const [selectedAssignee, setSelectedAssignee] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [commentFieldKey, setCommentFieldKey] = useState("");
 
   const detail = useQuery({
     queryKey: ["request", id],
@@ -67,6 +78,12 @@ export function RequestPage() {
   const items = useQuery({
     queryKey: ["request-items", id],
     queryFn: () => api<{ data: RequestItem[] }>(`/v1/requests/${id}/items`),
+    enabled: !!id,
+  });
+
+  const comments = useQuery({
+    queryKey: ["comments", id],
+    queryFn: () => api<{ data: RequestComment[] }>(`/v1/requests/${id}/comments`),
     enabled: !!id,
   });
 
@@ -213,6 +230,28 @@ export function RequestPage() {
       setMessage("Importação confirmada.");
       setImportPreview(null);
       await refreshAll();
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  }
+
+  async function addComment() {
+    if (!commentText.trim()) return;
+    setLocalError("");
+    try {
+      const selectedItem = items.data?.data.find((item) => item.item_key === itemKey);
+      await api(`/v1/requests/${id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({
+          text: commentText.trim(),
+          ...(selectedItem ? { itemId: selectedItem.id } : {}),
+          ...(commentFieldKey.trim() ? { fieldKey: commentFieldKey.trim() } : {}),
+        }),
+      });
+      setCommentText("");
+      setCommentFieldKey("");
+      setMessage("Comentário registrado.");
+      await queryClient.invalidateQueries({ queryKey: ["comments", id] });
     } catch (error) {
       setLocalError(errorMessage(error));
     }
