@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, Link, useNavigate } from "react-router-dom";
-import { ApiError } from "../api";
+import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 
 function inferredSubdomain(): string {
@@ -21,6 +21,27 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   if (authenticated) return <Navigate to="/inbox" replace />;
+
+  async function microsoftLogin() {
+    setError("");
+    if (!subdomain) {
+      setError("Informe a empresa antes de entrar com Microsoft.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await api<{ authorizeUrl: string }>(
+        `/v1/auth/microsoft/start?subdomain=${encodeURIComponent(subdomain)}`,
+        {},
+        false,
+      );
+      localStorage.setItem("handoff_subdomain", subdomain);
+      window.location.assign(result.authorizeUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Login Microsoft indisponível.");
+      setBusy(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -89,6 +110,10 @@ export function LoginPage() {
         {error && <div className="alert error">{error}</div>}
         <button className="primary" disabled={busy}>
           {busy ? "Entrando..." : "Entrar"}
+        </button>
+        <div className="auth-divider"><span>ou</span></div>
+        <button type="button" className="secondary" disabled={busy} onClick={() => void microsoftLogin()}>
+          Entrar com Microsoft
         </button>
         <Link className="text-link" to="/forgot-password">Esqueci minha senha</Link>
       </form>
