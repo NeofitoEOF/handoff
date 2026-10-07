@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import cookie from "@fastify/cookie";
+import cors from "@fastify/cors";
 import { ZodError } from "zod";
 import { registerAuth } from "./auth.js";
 import { pool } from "./db.js";
@@ -29,6 +30,10 @@ export async function buildApp() {
     logger: true,
   });
 
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+  });
   await app.register(cookie);
   await registerAuth(app);
   await app.register(multipart, {
