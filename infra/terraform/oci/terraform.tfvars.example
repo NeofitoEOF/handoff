@@ -19,3 +19,9 @@ oke_worker_pools = {
 
 # Never commit the password.
 # export TF_VAR_postgres_admin_password='...'
+
+
+# Enable after the OCI Load Balancer OCID is known.
+waf_enabled              = false
+waf_load_balancer_id     = null
+waf_requests_per_minute  = 600
