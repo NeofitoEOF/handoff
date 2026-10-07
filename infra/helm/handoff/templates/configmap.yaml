@@ -7,6 +7,7 @@ metadata:
 data:
   NODE_ENV: {{ .Values.config.NODE_ENV | quote }}
   PORT: {{ .Values.config.PORT | quote }}
+  TENANT_RATE_LIMIT_PER_MINUTE: {{ .Values.config.TENANT_RATE_LIMIT_PER_MINUTE | quote }}
   TRUST_PROXY: {{ .Values.config.TRUST_PROXY | quote }}
   APP_BASE_URL: {{ printf "https://%s" .Values.domain | quote }}
   WEB_ORIGINS: {{ printf "https://%s,https://*.%s" .Values.domain .Values.domain | quote }}

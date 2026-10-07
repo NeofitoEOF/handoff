@@ -55,6 +55,7 @@ ingress:
 config:
   NODE_ENV: production
   PORT: "3000"
+  TENANT_RATE_LIMIT_PER_MINUTE: "1000"
   TRUST_PROXY: "true"
   OBJECT_STORAGE_REGION: us-east-1
   OBJECT_STORAGE_BUCKET: handoff

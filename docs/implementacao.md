@@ -434,3 +434,13 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Testes PostgreSQL de concorrência, idempotência, rollback de lote e suspensão
 - ✅ Documentação em `docs/contract-quotas.md`
 - 🟡 Aplicação no ambiente real depende de credenciais/URLs e configuração dos contratos
+
+
+## Encerramento da implementação local
+
+- ✅ Migrations e testes PostgreSQL das quotas contratuais aprovados na CI
+- ✅ Local Staging E2E aprovado no commit 9e0bf68
+- ✅ Rate limit configurável no Helm e no exemplo de ambiente
+- ✅ CORS reconhece wildcard de um nível para subdomínios de tenant, validando protocolo/porta e rejeitando domínios externos
+- ✅ Testes de CORS cobrem origem raiz, tenant, localhost e tentativas de bypass
+- 🟡 Go-live real permanece condicionado a infraestrutura, credenciais e primeiro release publicado

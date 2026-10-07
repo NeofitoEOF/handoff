@@ -1,3 +1,4 @@
+import { createOriginMatcher } from "./cors-origin.js";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import cookie from "@fastify/cookie";
@@ -49,8 +50,9 @@ export async function buildApp() {
     },
   });
 
+  const originAllowed = createOriginMatcher(config.WEB_ORIGINS);
   await app.register(cors, {
-    origin: config.WEB_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),
+    origin: (origin, callback) => callback(null, originAllowed(origin)),
     credentials: true,
   });
   await app.register(rateLimit, {
