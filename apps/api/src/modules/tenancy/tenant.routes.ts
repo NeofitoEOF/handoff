@@ -28,7 +28,14 @@ export async function tenantRoutes(app: FastifyInstance): Promise<void> {
       adminPassword: z.string().min(12).max(200),
     }).parse(request.body);
 
-    const result = await provisionTenant(body);
+    const result = await provisionTenant({
+      name: body.name,
+      subdomain: body.subdomain,
+      adminEmail: body.adminEmail,
+      adminName: body.adminName,
+      adminPassword: body.adminPassword,
+      ...(body.document ? { document: body.document } : {}),
+    });
     return reply.code(201).send(result);
   });
 
