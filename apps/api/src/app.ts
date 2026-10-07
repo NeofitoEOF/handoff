@@ -71,8 +71,15 @@ export async function buildApp() {
       });
     }
 
-    if ("statusCode" in error && typeof error.statusCode === "number") {
-      return reply.code(error.statusCode).send({ message: error.message });
+    if (typeof error === "object" && error !== null && "statusCode" in error) {
+      const statusCode = (error as { statusCode?: unknown }).statusCode;
+      if (typeof statusCode === "number") {
+        const message =
+          "message" in error && typeof (error as { message?: unknown }).message === "string"
+            ? (error as { message: string }).message
+            : "Erro na requisição.";
+        return reply.code(statusCode).send({ message });
+      }
     }
 
     app.log.error(error);
