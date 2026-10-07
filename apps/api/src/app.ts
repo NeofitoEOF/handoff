@@ -10,6 +10,7 @@ import { requestOperationRoutes } from "./modules/requests/request-operations.ro
 import { itemRoutes } from "./modules/items/item.routes.js";
 import { reviewRoutes } from "./modules/reviews/review.routes.js";
 import { templateRoutes } from "./modules/templates/template.routes.js";
+import { closingRoutes } from "./modules/closing/closing.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -30,6 +31,7 @@ export async function buildApp() {
   await app.register(itemRoutes);
   await app.register(reviewRoutes);
   await app.register(templateRoutes);
+  await app.register(closingRoutes);
   await app.register(requestRoutes);
 
   app.setErrorHandler((error, _request, reply) => {
