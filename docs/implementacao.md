@@ -379,3 +379,14 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ actionlint e renderização Helm por digest verdes no CI
 - ✅ CodeQL, Trivy e E2E dedicado verdes
 - 🟡 Execução real do workflow Release exige a primeira tag v* e acesso ao GHCR
+
+
+## Resiliência do worker e outbox
+
+- ✅ Lease de processamento persistido para email, Teams, webhooks e PDF
+- ✅ Recuperação automática de itens PROCESSING com lease expirado
+- ✅ FOR UPDATE SKIP LOCKED impede dois workers de reivindicarem a mesma linha
+- ✅ Retry budget impede reprocessamento infinito
+- ✅ Dedupe key impede enfileiramento duplicado do mesmo evento de negócio
+- ✅ Testes de integração cobrem concorrência, lease expirado, lease fresco e deduplicação
+- ✅ Typecheck, testes, builds, Helm, Terraform e restore smoke verdes após os testes de resiliência
