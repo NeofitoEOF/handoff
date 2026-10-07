@@ -25,7 +25,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Usuário global
 - ✅ Vínculo usuário × tenant com papel ADMIN/AUDITOR/USER
 - ✅ RLS nas tabelas tenant-scoped criadas até aqui
-- 🟡 Teste automatizado de vazamento entre tenants — estrutura pronta, suíte E2E pendente
+- 🟡 Teste automatizado de vazamento entre tenants — RLS pronto, suíte E2E pendente
 - ⏳ Cadastro assistido da empresa
 - ⏳ Suspensão/inativação de tenant
 - ⏳ Exportação completa do tenant
@@ -37,8 +37,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Adicionar/reativar membro no setor
 - ✅ Gestor pode atribuir Membro/Aprovador
 - ✅ Somente Admin pode nomear Gestor
-- ⏳ Remover/inativar membro
-- ⏳ Impedir remoção do último Gestor
+- ✅ Remover/inativar membro
+- ✅ Impedir remoção do último Gestor
 - ⏳ Desativar setor com tratamento de pendências
 - ⏳ Convite por e-mail
 
@@ -56,8 +56,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Reatribuição não reinicia SLA
 - ✅ Máquina de estados centralizada
 - ✅ Testes unitários da máquina de estados
-- ⏳ Endpoint de atribuição inicial sem motivo de reatribuição
-- ⏳ Estado automático Aguardando reatribuição em desligamento/remoção
+- ✅ Endpoint de atribuição inicial separado da reatribuição
+- ✅ Estado automático Aguardando reatribuição em remoção/inativação do membro
 - ⏳ Alteração auditada de prazo
 - ⏳ Cancelamento com motivo
 - ⏳ Retificação de solicitação fechada
