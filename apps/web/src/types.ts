@@ -16,6 +16,10 @@ export type TemplateField = {
   max?: number;
   regex?: string;
   options?: string[];
+  calculation?:
+    | { op: "ADD" | "SUBTRACT" | "MULTIPLY"; fields: string[] }
+    | { op: "PERCENT"; valueField: string; percentField: string }
+    | { op: "COLUMN_SUM"; field: string };
 };
 
 export type TemplateSchema = {
@@ -40,6 +44,7 @@ export type RequestDetail = {
     schema_json: TemplateSchema | null;
     retifies_request_id: string | null;
   };
+  computedTotals: Record<string, number>;
   permissions: {
     canRead: boolean;
     canEdit: boolean;
