@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager } from "../../authorization.js";
+import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
 
 export async function assignRequest(input: {
   tenantId: string;
@@ -67,6 +68,29 @@ export async function assignRequest(input: {
         input.actorUserId,
       ],
     );
+
+    const assigneeUser = await client.query<{ email: string }>(
+      `SELECT email FROM users WHERE id = $1 AND active = true LIMIT 1`,
+      [input.assigneeUserId],
+    );
+    if (assigneeUser.rows[0]) {
+      await enqueueEmail(client, {
+        tenantId: input.tenantId,
+        requestId: input.requestId,
+        recipientEmail: assigneeUser.rows[0].email,
+        subject: "[Handoff] Solicitação atribuída a você",
+        bodyText: "Uma solicitação foi atribuída a você. Acesse o Handoff para visualizar o prazo e responder.",
+        dedupeKey: `request:${input.requestId}:assigned:${input.assigneeUserId}`,
+      });
+      await createInAppNotification(client, {
+        tenantId: input.tenantId,
+        userId: input.assigneeUserId,
+        requestId: input.requestId,
+        type: "REQUEST_ASSIGNED",
+        title: "Solicitação atribuída",
+        message: "Uma solicitação foi atribuída a você.",
+      });
+    }
 
     await client.query(
       `INSERT INTO audit_events
