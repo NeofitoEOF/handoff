@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: handoff
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/NeofitoEOF/handoff.git
+    targetRevision: main
+    path: infra/helm/handoff
+    helm:
+      values: |
+        domain: handoff.example.com
+        images:
+          api:
+            repository: ghcr.io/neofitoeof/handoff-api
+            tag: latest
+          web:
+            repository: ghcr.io/neofitoeof/handoff-web
+            tag: latest
+          worker:
+            repository: ghcr.io/neofitoeof/handoff-worker
+            tag: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: handoff
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
