@@ -40,7 +40,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Remover/inativar membro
 - ✅ Impedir remoção do último Gestor
 - ⏳ Desativar setor com tratamento de pendências
-- ⏳ Convite por e-mail
+- 🟡 Convite implementado; envio por e-mail pendente
 
 ## Solicitações
 
