@@ -23,7 +23,7 @@ function refreshCookieOptions(expires: Date) {
 }
 
 export async function identityRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/v1/auth/login", async (request, reply) => {
+  app.post("/v1/auth/login", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (request, reply) => {
     const body = z.object({
       tenantId: z.string().uuid(),
       email: z.string().email(),
@@ -95,7 +95,7 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(204).send();
   });
 
-  app.post("/v1/auth/password-reset/request", async (request, reply) => {
+  app.post("/v1/auth/password-reset/request", { config: { rateLimit: { max: 5, timeWindow: "1 hour" } } }, async (request, reply) => {
     const body = z.object({
       tenantId: z.string().uuid(),
       email: z.string().email(),
