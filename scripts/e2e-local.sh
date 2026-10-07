@@ -136,7 +136,18 @@ echo "[e2e] verify final state and audit chain"
 detail="$(curl -fsS -H "authorization: Bearer $admin_token" "$API_URL/v1/requests/$request_id")"
 printf '%s' "$detail" | jq -e '.request.status == "CLOSED"' >/dev/null
 
-audit="$(curl -fsS -H "authorization: Bearer $admin_token" "$API_URL/v1/audit/verify")"
+audit_file="$(mktemp)"
+audit_status="$(curl -sS -o "$audit_file" -w '%{http_code}' \
+  -H "authorization: Bearer $admin_token" \
+  "$API_URL/v1/audit/verify")"
+audit="$(cat "$audit_file")"
+rm -f "$audit_file"
+
+if [ "$audit_status" != "200" ]; then
+  echo "[e2e] audit verification failed HTTP $audit_status: $audit" >&2
+  exit 1
+fi
+
 printf '%s' "$audit" | jq -e '.valid == true' >/dev/null
 
 echo "[e2e] verify inbox endpoint for manager"
