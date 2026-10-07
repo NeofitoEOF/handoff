@@ -18,6 +18,10 @@ function sqlLiteral(value: string): string {
   return "'" + value.replaceAll("'", "''") + "'";
 }
 
+function sqlIdentifier(value: string): string {
+  return '"' + value.replaceAll('"', '""') + '"';
+}
+
 const client = new Client({ connectionString: migrationUrl });
 await client.connect();
 
@@ -32,7 +36,9 @@ try {
       `CREATE ROLE "${appUser}" LOGIN PASSWORD ${sqlLiteral(appPassword)} NOBYPASSRLS`,
     );
   } else {
-    await client.query(`ALTER ROLE "${appUser}" NOBYPASSRLS`);
+    await client.query(
+      `ALTER ROLE "${appUser}" WITH LOGIN PASSWORD ${sqlLiteral(appPassword)} NOBYPASSRLS`,
+    );
   }
 
   await client.query(`
@@ -63,7 +69,14 @@ try {
     );
   }
 
-  await client.query(`GRANT CONNECT ON DATABASE ${client.database} TO "${appUser}"`);
+  const databaseResult = await client.query<{ name: string }>(
+    "SELECT current_database() AS name",
+  );
+  const databaseName = databaseResult.rows[0]!.name;
+
+  await client.query(
+    `GRANT CONNECT ON DATABASE ${sqlIdentifier(databaseName)} TO "${appUser}"`,
+  );
   await client.query(`GRANT USAGE ON SCHEMA public TO "${appUser}"`);
   await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${appUser}"`);
   await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${appUser}"`);
