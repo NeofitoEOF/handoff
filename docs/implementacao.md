@@ -361,3 +361,21 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Restore verifica checksums presentes e válidos
 - ✅ Política expand/contract documentada
 - ✅ CI principal, Security e E2E dedicado verdes com checksum habilitado
+
+
+## Supply-chain de release
+
+- ✅ SBOM OCI gerado pelo BuildKit para API, worker e web
+- ✅ Provenance BuildKit mode=max
+- ✅ Assinatura Cosign keyless por digest usando GitHub OIDC
+- ✅ Assinaturas verificadas no próprio workflow de release
+- ✅ release-manifest.json registra commit e os três digests
+- ✅ Chart Helm versionado pela tag da release
+- ✅ SHA256SUMS para manifesto e chart
+- ✅ GitHub Release como fonte imutável de promoção
+- ✅ Deploy recebe release tag, valida checksums e assinaturas antes do kubeconfig
+- ✅ Helm suporta repository@sha256:digest para API, worker, web e migration job
+- ✅ Deploy confirma os digests efetivamente configurados nos Deployments
+- ✅ actionlint e renderização Helm por digest verdes no CI
+- ✅ CodeQL, Trivy e E2E dedicado verdes
+- 🟡 Execução real do workflow Release exige a primeira tag v* e acesso ao GHCR
