@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager, isTenantAdmin } from "../../authorization.js";
+import { canEnableAnotherSector } from "../billing/billing.service.js";
 
 export type MembershipRole = "MANAGER" | "APPROVER" | "MEMBER";
 
@@ -23,6 +24,16 @@ export async function createSector(input: {
   return withTenantTransaction(input.tenantId, async (client) => {
     if (!(await isTenantAdmin(client, input.tenantId, input.actorUserId))) {
       return { kind: "forbidden" as const };
+    }
+
+    const entitlement = await canEnableAnotherSector(client, input.tenantId);
+    if (!entitlement.allowed) {
+      return {
+        kind: "plan_limit" as const,
+        reason: entitlement.reason,
+        ...("limit" in entitlement ? { limit: entitlement.limit } : {}),
+        ...("activeSectors" in entitlement ? { activeSectors: entitlement.activeSectors } : {}),
+      };
     }
 
     const result = await client.query<{ id: string; name: string }>(
