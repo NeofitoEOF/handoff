@@ -39,6 +39,12 @@ jobs:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @handoff/api migrate
+      - name: Validate shell scripts
+        run: |
+          for file in scripts/*.sh; do
+            sh -n "$file"
+          done
+
       - run: pnpm -r typecheck
       - run: pnpm -r test
       - run: pnpm -r build
