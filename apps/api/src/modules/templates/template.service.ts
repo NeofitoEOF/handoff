@@ -6,11 +6,11 @@ export type TemplateSchema = {
     key: string;
     label: string;
     type: "TEXT" | "NUMBER" | "MONEY" | "DATE" | "CPF" | "CNPJ" | "SELECT" | "BOOLEAN" | "ATTACHMENT";
-    required?: boolean;
-    min?: number;
-    max?: number;
-    regex?: string;
-    options?: string[];
+    required?: boolean | undefined;
+    min?: number | undefined;
+    max?: number | undefined;
+    regex?: string | undefined;
+    options?: string[] | undefined;
   }>;
 };
 
