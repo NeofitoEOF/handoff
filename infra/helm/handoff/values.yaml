@@ -88,6 +88,9 @@ observability:
     databaseDownFor: 1m
     high5xxFor: 5m
     high5xxRatio: 0.05
+    deadLetterFor: 2m
+    oldestPendingFor: 10m
+    oldestPendingSeconds: 900
 
 
 externalSecrets:
