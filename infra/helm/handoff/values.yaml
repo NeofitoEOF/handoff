@@ -55,6 +55,7 @@ ingress:
 config:
   NODE_ENV: production
   PORT: "3000"
+  TRUST_PROXY: "true"
   OBJECT_STORAGE_REGION: us-east-1
   OBJECT_STORAGE_BUCKET: handoff
   AUDIT_ANCHOR_BUCKET: handoff-audit-anchors
