@@ -147,9 +147,9 @@ export async function importXlsx(input: {
   return withTenantTransaction(input.tenantId, async (client) => {
     const importResult = await client.query<{ id: string }>(
       `INSERT INTO imports
-        (tenant_id, request_id, uploaded_by, filename, storage_key, sha256, status,
+        (tenant_id, request_id, uploaded_by, filename, size_bytes, storage_key, sha256, status,
          total_rows, accepted_rows, rejected_rows, errors, staged_items, completed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'VALIDATED', $7, $8, $9, $10::jsonb, $11::jsonb, now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'VALIDATED', $8, $9, $10, $11::jsonb, $12::jsonb, now())
        RETURNING id`,
       [
         input.tenantId, input.requestId, input.actorUserId, input.filename,
