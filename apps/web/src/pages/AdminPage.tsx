@@ -10,9 +10,37 @@ export function AdminPage() {
   const [microsoftEnabled, setMicrosoftEnabled] = useState(true);
   const [teamsWebhookUrl, setTeamsWebhookUrl] = useState("");
   const [hasTeamsWebhook, setHasTeamsWebhook] = useState(false);
+  const [billingSummary, setBillingSummary] = useState<{
+    profile: {
+      plan: string;
+      status: string;
+      monthly_price_per_sector_cents: number;
+      currency: string;
+    };
+    entitlements: { maxSectors: number | null; storageBytes: number | null };
+    usage: { enabledSectors: number; requestsThisMonth: number; storageBytes: number };
+    estimatedMonthlyAmountCents: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
+    void api<{
+      profile: {
+        plan: string;
+        status: string;
+        monthly_price_per_sector_cents: number;
+        currency: string;
+      };
+      entitlements: { maxSectors: number | null; storageBytes: number | null };
+      usage: { enabledSectors: number; requestsThisMonth: number; storageBytes: number };
+      estimatedMonthlyAmountCents: number;
+    }>("/v1/admin/billing")
+      .then((summary) => {
+        if (!cancelled) setBillingSummary(summary);
+      })
+      .catch(() => undefined);
+
     void (async () => {
       try {
         const integration = await api<{
@@ -160,6 +188,50 @@ export function AdminPage() {
           Salvar Microsoft
         </button>
       </div>
+
+      {billingSummary && (
+        <div className="card">
+          <h2>Plano e uso</h2>
+          <div className="metric-grid">
+            <div className="metric-card">
+              <span>Plano</span>
+              <strong>{billingSummary.profile.plan}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Status</span>
+              <strong>{billingSummary.profile.status}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Setores</span>
+              <strong>
+                {billingSummary.usage.enabledSectors}
+                {billingSummary.entitlements.maxSectors !== null
+                  ? `/${billingSummary.entitlements.maxSectors}`
+                  : ""}
+              </strong>
+            </div>
+            <div className="metric-card">
+              <span>Solicitações no mês</span>
+              <strong>{billingSummary.usage.requestsThisMonth}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Estimativa mensal</span>
+              <strong>
+                {new Intl.NumberFormat("pt-BR", {
+                  style: "currency",
+                  currency: billingSummary.profile.currency,
+                }).format(billingSummary.estimatedMonthlyAmountCents / 100)}
+              </strong>
+            </div>
+          </div>
+          <p className="muted">
+            Armazenamento usado: {(billingSummary.usage.storageBytes / 1024 / 1024).toFixed(1)} MB
+            {billingSummary.entitlements.storageBytes !== null
+              ? ` de ${(billingSummary.entitlements.storageBytes / 1024 / 1024 / 1024).toFixed(0)} GB`
+              : ""}
+          </p>
+        </div>
+      )}
 
       <div className="card">
         <h2>Exportação da empresa</h2>
