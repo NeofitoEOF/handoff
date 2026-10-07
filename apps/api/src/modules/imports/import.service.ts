@@ -4,6 +4,7 @@ import { withTenantTransaction } from "../../db.js";
 import { putObject } from "../../storage.js";
 import { scanBuffer } from "../../antivirus.js";
 import { loadDefaultImportMapping } from "./import-mapping.service.js";
+import { checkTenantStorageCapacity } from "../billing/billing.service.js";
 
 type TemplateField = {
   key: string;
@@ -107,8 +108,6 @@ export async function importXlsx(input: {
 
   if (context.kind !== "ok") return context;
 
-  await putObject({ key: storageKey, body: input.buffer, contentType: input.mimeType });
-
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(input.buffer as any);
   const worksheet = workbook.worksheets[0];
@@ -145,6 +144,22 @@ export async function importXlsx(input: {
   }
 
   return withTenantTransaction(input.tenantId, async (client) => {
+    const capacity = await checkTenantStorageCapacity(
+      client,
+      input.tenantId,
+      input.buffer.byteLength,
+    );
+    if (!capacity.allowed) {
+      return {
+        kind: "storage_limit" as const,
+        reason: capacity.reason,
+        ...("usedBytes" in capacity ? { usedBytes: capacity.usedBytes } : {}),
+        ...("limitBytes" in capacity ? { limitBytes: capacity.limitBytes } : {}),
+      };
+    }
+
+    await putObject({ key: storageKey, body: input.buffer, contentType: input.mimeType });
+
     const importResult = await client.query<{ id: string }>(
       `INSERT INTO imports
         (tenant_id, request_id, uploaded_by, filename, size_bytes, storage_key, sha256, status,
@@ -153,7 +168,7 @@ export async function importXlsx(input: {
        RETURNING id`,
       [
         input.tenantId, input.requestId, input.actorUserId, input.filename,
-        storageKey, sha256, Math.max(worksheet.rowCount - 1, 0),
+        input.buffer.byteLength, storageKey, sha256, Math.max(worksheet.rowCount - 1, 0),
         accepted.length, new Set(errors.map((x) => x.row)).size,
         JSON.stringify(errors), JSON.stringify(accepted),
       ],

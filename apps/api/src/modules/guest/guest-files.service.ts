@@ -5,6 +5,7 @@ import { putObject } from "../../storage.js";
 import { validateXlsxBuffer, type XlsxTemplateField } from "../imports/xlsx-validator.js";
 import { loadDefaultImportMapping } from "../imports/import-mapping.service.js";
 import { withGuestSession } from "./guest.service.js";
+import { checkTenantStorageCapacity } from "../billing/billing.service.js";
 
 export async function guestValidateXlsx(input: {
   sessionToken: string;
@@ -58,20 +59,36 @@ export async function guestValidateXlsx(input: {
 
     const sha256 = crypto.createHash("sha256").update(input.buffer).digest("hex");
     const storageKey = `${context.tenantId}/${context.requestId}/guest-imports/${sha256}.xlsx`;
-    await putObject({ key: storageKey, body: input.buffer, contentType: input.mimeType });
 
     return withTenantTransaction(context.tenantId, async (client) => {
+      const capacity = await checkTenantStorageCapacity(
+        client,
+        context.tenantId,
+        input.buffer.byteLength,
+      );
+      if (!capacity.allowed) {
+        return {
+          kind: "storage_limit" as const,
+          reason: capacity.reason,
+          ...("usedBytes" in capacity ? { usedBytes: capacity.usedBytes } : {}),
+          ...("limitBytes" in capacity ? { limitBytes: capacity.limitBytes } : {}),
+        };
+      }
+
+      await putObject({ key: storageKey, body: input.buffer, contentType: input.mimeType });
+
       const created = await client.query<{ id: string }>(
         `INSERT INTO imports
-          (tenant_id, request_id, uploaded_by, uploaded_guest_link_id, filename, storage_key,
+          (tenant_id, request_id, uploaded_by, uploaded_guest_link_id, filename, size_bytes, storage_key,
            sha256, status, total_rows, accepted_rows, rejected_rows, errors, staged_items, completed_at)
-         VALUES ($1, $2, NULL, $3, $4, $5, $6, 'VALIDATED', $7, $8, $9, $10::jsonb, $11::jsonb, now())
+         VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, 'VALIDATED', $8, $9, $10, $11::jsonb, $12::jsonb, now())
          RETURNING id`,
         [
           context.tenantId,
           context.requestId,
           context.guestLinkId,
           input.filename,
+          input.buffer.byteLength,
           storageKey,
           sha256,
           validation.totalRows,
@@ -201,6 +218,20 @@ export async function guestUploadEvidence(input: {
           [input.itemId, context.requestId],
         );
         if (item.rowCount !== 1) return { kind: "item_not_found" as const };
+      }
+
+      const capacity = await checkTenantStorageCapacity(
+        client,
+        context.tenantId,
+        input.buffer.byteLength,
+      );
+      if (!capacity.allowed) {
+        return {
+          kind: "storage_limit" as const,
+          reason: capacity.reason,
+          ...("usedBytes" in capacity ? { usedBytes: capacity.usedBytes } : {}),
+          ...("limitBytes" in capacity ? { limitBytes: capacity.limitBytes } : {}),
+        };
       }
 
       const sha256 = crypto.createHash("sha256").update(input.buffer).digest("hex");

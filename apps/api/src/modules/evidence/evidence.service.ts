@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
 import { getPresignedDownloadUrl, putObject } from "../../storage.js";
 import { scanBuffer } from "../../antivirus.js";
+import { checkTenantStorageCapacity } from "../billing/billing.service.js";
 
 export async function uploadEvidence(input: {
   tenantId: string;
@@ -59,6 +60,20 @@ export async function uploadEvidence(input: {
         [input.itemId, input.requestId],
       );
       if (item.rowCount !== 1) return { kind: "item_not_found" as const };
+    }
+
+    const capacity = await checkTenantStorageCapacity(
+      client,
+      input.tenantId,
+      input.buffer.byteLength,
+    );
+    if (!capacity.allowed) {
+      return {
+        kind: "storage_limit" as const,
+        reason: capacity.reason,
+        ...("usedBytes" in capacity ? { usedBytes: capacity.usedBytes } : {}),
+        ...("limitBytes" in capacity ? { limitBytes: capacity.limitBytes } : {}),
+      };
     }
 
     const sha256 = crypto.createHash("sha256").update(input.buffer).digest("hex");

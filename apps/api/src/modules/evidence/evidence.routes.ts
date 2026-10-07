@@ -41,6 +41,13 @@ export async function evidenceRoutes(app: FastifyInstance): Promise<void> {
       case "item_not_found": return reply.code(404).send({ message: "Item não pertence à solicitação." });
       case "forbidden": return reply.code(403).send({ message: "Sem acesso à solicitação." });
       case "invalid_state": return reply.code(409).send({ message: "Estado não permite novos anexos.", status: result.status });
+      case "storage_limit": return reply.code(409).send({
+        message: result.reason === "billing_inactive"
+          ? "Plano do tenant está suspenso ou cancelado."
+          : "Limite de armazenamento do plano atingido.",
+        usedBytes: result.usedBytes,
+        limitBytes: result.limitBytes,
+      });
       case "uploaded": return reply.code(201).send(result.attachment);
     }
   });

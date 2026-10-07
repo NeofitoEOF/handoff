@@ -90,6 +90,58 @@ export async function canEnableAnotherSector(
     : { allowed: true as const, profile, activeSectors };
 }
 
+export async function checkTenantStorageCapacity(
+  client: import("../../db.js").DbClient,
+  tenantId: string,
+  incomingBytes: number,
+) {
+  const profile = await getTenantPlan(client, tenantId);
+  if (["SUSPENDED", "CANCELLED"].includes(profile.status)) {
+    return {
+      allowed: false as const,
+      reason: "billing_inactive" as const,
+      profile,
+    };
+  }
+
+  const entitlement = PLAN_ENTITLEMENTS[profile.plan];
+  if (entitlement.storageBytes === null) {
+    return { allowed: true as const, profile, usedBytes: 0, limitBytes: null };
+  }
+
+  // Serializa apenas decisões de quota do mesmo tenant durante esta transação.
+  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+    `storage-quota:${tenantId}`,
+  ]);
+
+  const usage = await client.query<{ bytes: string }>(
+    `SELECT
+        COALESCE((SELECT sum(size_bytes) FROM attachments), 0) +
+        COALESCE((SELECT sum(size_bytes) FROM imports), 0) AS bytes`,
+  );
+  const usedBytes = Number(usage.rows[0]?.bytes ?? 0);
+  const limitBytes = entitlement.storageBytes;
+
+  if (usedBytes + incomingBytes > limitBytes) {
+    return {
+      allowed: false as const,
+      reason: "storage_limit" as const,
+      profile,
+      usedBytes,
+      incomingBytes,
+      limitBytes,
+    };
+  }
+
+  return {
+    allowed: true as const,
+    profile,
+    usedBytes,
+    incomingBytes,
+    limitBytes,
+  };
+}
+
 export async function getBillingSummary(input: {
   tenantId: string;
   actorUserId: string;

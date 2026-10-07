@@ -34,6 +34,13 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
       case "empty_workbook": return reply.code(422).send({ message: "Planilha sem worksheet." });
       case "too_many_rows": return reply.code(422).send({ message: "Limite de 10.000 linhas excedido." });
       case "too_many_columns": return reply.code(422).send({ message: "Limite de 200 colunas excedido." });
+      case "storage_limit": return reply.code(409).send({
+        message: result.reason === "billing_inactive"
+          ? "Plano do tenant está suspenso ou cancelado."
+          : "Limite de armazenamento do plano atingido.",
+        usedBytes: result.usedBytes,
+        limitBytes: result.limitBytes,
+      });
       case "validated": return reply.code(200).send(result);
     }
   });

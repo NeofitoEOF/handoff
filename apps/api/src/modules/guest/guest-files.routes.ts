@@ -39,6 +39,13 @@ export async function guestFileRoutes(app: FastifyInstance): Promise<void> {
     if (result.kind === "empty_workbook") return reply.code(422).send({ message: "Planilha vazia." });
     if (result.kind === "too_many_rows") return reply.code(422).send({ message: "Limite de 10.000 linhas excedido." });
     if (result.kind === "too_many_columns") return reply.code(422).send({ message: "Limite de 200 colunas excedido." });
+    if (result.kind === "storage_limit") return reply.code(409).send({
+      message: result.reason === "billing_inactive"
+        ? "Plano do tenant está suspenso ou cancelado."
+        : "Limite de armazenamento do plano atingido.",
+      usedBytes: result.usedBytes,
+      limitBytes: result.limitBytes,
+    });
     return reply.send(result);
   });
 
@@ -80,6 +87,13 @@ export async function guestFileRoutes(app: FastifyInstance): Promise<void> {
     if (result.kind === "not_found") return reply.code(404).send({ message: "Solicitação não encontrada." });
     if (result.kind === "item_not_found") return reply.code(404).send({ message: "Item não encontrado." });
     if (result.kind === "invalid_state") return reply.code(409).send({ message: "Estado não permite evidência.", status: result.status });
+    if (result.kind === "storage_limit") return reply.code(409).send({
+      message: result.reason === "billing_inactive"
+        ? "Plano do tenant está suspenso ou cancelado."
+        : "Limite de armazenamento do plano atingido.",
+      usedBytes: result.usedBytes,
+      limitBytes: result.limitBytes,
+    });
     return reply.code(201).send(result.attachment);
   });
 }
