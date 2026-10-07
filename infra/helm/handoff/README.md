@@ -16,7 +16,7 @@ Deploy do Handoff em Kubernetes/OKE.
 `APP_DATABASE_PASSWORD`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`,
 `PLATFORM_ADMIN_KEY`, `INTEGRATION_ENCRYPTION_KEY`,
 `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY`,
-`OBJECT_STORAGE_SECRET_KEY`, além de SMTP quando habilitado.
+`OBJECT_STORAGE_SECRET_KEY`, `METRICS_TOKEN`, além de SMTP quando habilitado.
 
 ## Deploy
 
@@ -30,5 +30,6 @@ helm upgrade --install handoff infra/helm/handoff \
 ```
 
 O job de migration roda antes do rollout. API e web têm health probes; API e
-worker possuem HPA por CPU como fallback inicial. Escala por profundidade de fila
-fica para a adoção de um backend de fila dedicado.
+worker possuem HPA por CPU como fallback inicial. O `ServiceMonitor` é opcional e
+usa `METRICS_TOKEN` para coletar `/internal/metrics`. Escala por profundidade de
+fila fica para a adoção de um backend de fila dedicado.
