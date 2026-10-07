@@ -59,6 +59,9 @@ jobs:
       - name: Validate GitHub Actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
 
+      - name: Check migration safety
+        run: node scripts/check-migrations.mjs
+
       - run: pnpm -r typecheck
       - run: pnpm -r test
       - run: pnpm -r build
