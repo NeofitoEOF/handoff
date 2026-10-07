@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { acceptInvitation, createInvitation } from "./invitation.service.js";
+import { config } from "../../config.js";
 
 export async function invitationRoutes(app: FastifyInstance): Promise<void> {
   app.post(
@@ -29,8 +30,8 @@ export async function invitationRoutes(app: FastifyInstance): Promise<void> {
         case "created":
           return reply.code(201).send({
             invitationId: result.invitationId,
-            inviteToken: result.token,
             expiresAt: result.expiresAt,
+            ...(config.NODE_ENV !== "production" ? { devInviteToken: result.token } : {}),
           });
       }
     },
