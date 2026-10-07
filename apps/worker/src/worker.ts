@@ -8,13 +8,12 @@ const pool = new Pool({ connectionString: config.DATABASE_URL, max: 5 });
 const transporter =
   config.EMAIL_TRANSPORT === "smtp"
     ? nodemailer.createTransport({
-        host: config.SMTP_HOST,
+        ...(config.SMTP_HOST ? { host: config.SMTP_HOST } : {}),
         port: config.SMTP_PORT,
         secure: config.SMTP_SECURE,
-        auth:
-          config.SMTP_USER && config.SMTP_PASS
-            ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
-            : undefined,
+        ...(config.SMTP_USER && config.SMTP_PASS
+          ? { auth: { user: config.SMTP_USER, pass: config.SMTP_PASS } }
+          : {}),
       })
     : null;
 
