@@ -15,5 +15,42 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBJECT_STORAGE_ACCESS_KEY:-handoff}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY:-handoff-local-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - handoff-minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000
+      ${OBJECT_STORAGE_ACCESS_KEY:-handoff}
+      ${OBJECT_STORAGE_SECRET_KEY:-handoff-local-secret};
+      mc mb --ignore-existing local/${OBJECT_STORAGE_BUCKET:-handoff};
+      exit 0;
+      "
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    ports:
+      - "3001:3000"
+
 volumes:
   handoff-postgres:
+  handoff-minio:
