@@ -1,5 +1,6 @@
 import type { DbClient } from "../../db.js";
 import { withTenantTransaction } from "../../db.js";
+import { createInAppNotification, enqueueEmail } from "../notifications/notification.service.js";
 
 export type ReassignRequestInput = {
   tenantId: string;
@@ -108,6 +109,29 @@ export async function reassignRequest(input: ReassignRequestInput) {
         input.comment ?? null,
       ],
     );
+
+    const newAssignee = await client.query<{ email: string }>(
+      `SELECT email FROM users WHERE id = $1 AND active = true LIMIT 1`,
+      [input.newAssigneeUserId],
+    );
+    if (newAssignee.rows[0]) {
+      await enqueueEmail(client, {
+        tenantId: input.tenantId,
+        requestId: input.requestId,
+        recipientEmail: newAssignee.rows[0].email,
+        subject: "[Handoff] Solicitação reatribuída a você",
+        bodyText: "Uma solicitação foi reatribuída a você. O prazo original foi preservado.",
+        dedupeKey: `request:${input.requestId}:reassigned:${input.newAssigneeUserId}:${input.reason}`,
+      });
+      await createInAppNotification(client, {
+        tenantId: input.tenantId,
+        userId: input.newAssigneeUserId,
+        requestId: input.requestId,
+        type: "REQUEST_REASSIGNED",
+        title: "Solicitação reatribuída",
+        message: "Você é o novo responsável por uma solicitação.",
+      });
+    }
 
     await client.query(
       `INSERT INTO audit_events
