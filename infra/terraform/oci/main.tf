@@ -49,6 +49,32 @@ resource "oci_objectstorage_bucket" "handoff" {
   freeform_tags = local.tags
 }
 
+
+
+resource "oci_objectstorage_bucket" "audit_anchors" {
+  compartment_id = var.compartment_id
+  namespace      = data.oci_objectstorage_namespace.current.namespace
+  name           = "${local.name}-audit-anchors"
+
+  access_type           = "NoPublicAccess"
+  object_events_enabled = true
+  storage_tier          = "Standard"
+  versioning            = "Enabled"
+
+  retention_rules {
+    display_name = "${local.name}-audit-worm"
+
+    duration {
+      time_amount = tostring(var.audit_anchor_retention_days)
+      time_unit   = "DAYS"
+    }
+
+    time_rule_locked = var.audit_anchor_retention_rule_lock_at
+  }
+
+  freeform_tags = local.tags
+}
+
 resource "oci_kms_vault" "handoff" {
   compartment_id = var.compartment_id
   display_name   = "${local.name}-vault"
