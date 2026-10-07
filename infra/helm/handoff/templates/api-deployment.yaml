@@ -17,6 +17,10 @@ spec:
         app.kubernetes.io/name: handoff
         app.kubernetes.io/component: api
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: "{{ .Values.images.api.repository }}{{ if .Values.images.api.digest }}@{{ .Values.images.api.digest }}{{ else }}:{{ .Values.images.api.tag }}{{ end }}"
