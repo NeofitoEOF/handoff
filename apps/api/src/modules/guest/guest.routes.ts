@@ -39,7 +39,7 @@ export async function guestRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post("/v1/guest/request-otp", async (request, reply) => {
+  app.post("/v1/guest/request-otp", { config: { rateLimit: { max: 5, timeWindow: "10 minutes" } } }, async (request, reply) => {
     const body = z.object({ linkToken: z.string().min(40) }).parse(request.body);
     const result = await issueGuestOtp(body.linkToken);
 
