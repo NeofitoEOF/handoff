@@ -93,9 +93,10 @@ export async function exportRequestXlsx(input: {
   sheet.getRow(1).font = { bold: true };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
   for (const column of sheet.columns) {
+    const values = column.values ?? [];
     column.width = Math.min(
       50,
-      Math.max(12, ...column.values.slice(1).map((value) => String(value ?? "").length + 2)),
+      Math.max(12, ...values.slice(1).map((value) => String(value ?? "").length + 2)),
     );
   }
 
