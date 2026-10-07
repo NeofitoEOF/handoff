@@ -67,6 +67,8 @@ export async function templateRoutes(app: FastifyInstance): Promise<void> {
 
       const inferred = await inferTemplateFromXlsx(await file.toBuffer());
       if (inferred.kind === "file_too_large") return reply.code(413).send({ message: "Arquivo excede 20 MB." });
+      if (inferred.kind === "malware_detected") return reply.code(422).send({ message: "Arquivo rejeitado pelo antivírus.", signature: inferred.signature });
+      if (inferred.kind === "antivirus_unavailable") return reply.code(503).send({ message: "Antivírus indisponível. O arquivo não foi processado." });
       if (inferred.kind === "empty_workbook") return reply.code(422).send({ message: "Planilha sem worksheet." });
       if (inferred.kind === "too_many_columns") return reply.code(422).send({ message: "Limite de 200 colunas excedido." });
       if (inferred.kind === "no_headers") return reply.code(422).send({ message: "Cabeçalhos não encontrados na primeira linha." });
