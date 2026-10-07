@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { api } from "../api";
+import { api, downloadAuthenticated } from "../api";
 import { DynamicFields } from "../components/DynamicFields";
 import type { RequestDetail, RequestItem } from "../types";
 
