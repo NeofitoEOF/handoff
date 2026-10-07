@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { withTenantTransaction } from "../../db.js";
 import { putObject } from "../../storage.js";
 import { scanBuffer } from "../../antivirus.js";
+import { loadDefaultImportMapping } from "./import-mapping.service.js";
 
 type TemplateField = {
   key: string;
