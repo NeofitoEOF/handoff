@@ -45,6 +45,10 @@ export async function requestRoutes(app: FastifyInstance): Promise<void> {
             message: "Solicitação não pode ser reatribuída no estado atual.",
             status: result.status,
           });
+        case "forbidden":
+          return reply.code(403).send({
+            message: "Somente Gestor ativo do setor de destino pode reatribuir.",
+          });
         case "invalid_assignee":
           return reply.code(422).send({
             message: "Novo responsável não pertence ao setor de destino.",
