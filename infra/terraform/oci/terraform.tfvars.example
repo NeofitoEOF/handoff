@@ -25,3 +25,10 @@ oke_worker_pools = {
 waf_enabled              = false
 waf_load_balancer_id     = null
 waf_requests_per_minute  = 600
+
+
+audit_anchor_retention_days = 3650
+
+# After validating the policy in production, set an RFC3339 timestamp.
+# Once the rule is locked, OCI does not allow shortening/removing it.
+audit_anchor_retention_rule_lock_at = null
