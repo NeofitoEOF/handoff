@@ -123,10 +123,60 @@ jobs:
         with:
           version: v3.17.0
 
+      - name: Verify image signatures
+        env:
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${RELEASE_TAG}"
+          issuer="https://token.actions.githubusercontent.com"
+
+          cosign verify --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" "${IMAGE_PREFIX}-api@${API_DIGEST}"
+          cosign verify --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" "${IMAGE_PREFIX}-worker@${WORKER_DIGEST}"
+          cosign verify --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" "${IMAGE_PREFIX}-web@${WEB_DIGEST}"
+
       - name: Package chart
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
           helm lint infra/helm/handoff
-          helm package infra/helm/handoff --destination dist
+          version="${TAG#v}"
+          printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum release-manifest.json *.tgz > SHA256SUMS
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-release-${{ steps.meta.outputs.tag }}
+          path: |
+            dist/*.tgz
+            dist/release-manifest.json
+            dist/SHA256SUMS
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            dist/release-manifest.json \
+            dist/SHA256SUMS \
+            dist/*.tgz \
+            --verify-tag \
+            --generate-notes \
+            --title "$TAG"
+
+          helm package infra/helm/handoff \
+            --version "$version" \
+            --app-version "$TAG" \
+            --destination dist
 
       - name: Create checksums
         run: |
