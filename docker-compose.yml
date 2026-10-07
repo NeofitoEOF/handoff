@@ -44,6 +44,7 @@ services:
       ${OBJECT_STORAGE_ACCESS_KEY:-handoff}
       ${OBJECT_STORAGE_SECRET_KEY:-handoff-local-secret};
       mc mb --ignore-existing local/${OBJECT_STORAGE_BUCKET:-handoff};
+      mc mb --ignore-existing local/${AUDIT_ANCHOR_BUCKET:-handoff-audit-anchors};
       exit 0;
       "
 
