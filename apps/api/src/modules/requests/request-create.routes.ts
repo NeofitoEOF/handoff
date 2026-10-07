@@ -9,6 +9,7 @@ const bodySchema = z.object({
   dueAt: z.coerce.date(),
   competence: z.string().trim().min(1).max(80).optional(),
   instructions: z.string().trim().max(5000).optional(),
+  templateVersionId: z.string().uuid().optional(),
 });
 
 export async function requestCreateRoutes(app: FastifyInstance): Promise<void> {
@@ -24,6 +25,7 @@ export async function requestCreateRoutes(app: FastifyInstance): Promise<void> {
       dueAt: body.dueAt,
       ...(body.competence ? { competence: body.competence } : {}),
       ...(body.instructions ? { instructions: body.instructions } : {}),
+      ...(body.templateVersionId ? { templateVersionId: body.templateVersionId } : {}),
     });
 
     switch (result.kind) {
@@ -33,6 +35,8 @@ export async function requestCreateRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(403).send({ message: "Usuário não pertence ao setor de origem." });
       case "invalid_sector":
         return reply.code(422).send({ message: "Setor de origem ou destino é inválido/inativo." });
+      case "invalid_template_version":
+        return reply.code(422).send({ message: "Versão de modelo inválida ou não publicada para o setor de origem." });
       case "duplicate_competence":
         return reply.code(409).send({
           message: "Já existe solicitação ativa para este fluxo e competência.",
