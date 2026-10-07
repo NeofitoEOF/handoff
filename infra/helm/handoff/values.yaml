@@ -72,3 +72,8 @@ secretName: handoff-secrets
 service:
   apiPort: 3000
   webPort: 8080
+
+observability:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
