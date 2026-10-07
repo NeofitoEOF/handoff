@@ -227,10 +227,12 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Entrada API/web limitada ao ingress controller no chart
 - ✅ Containers non-root, root filesystem read-only e capabilities removidas
 - ✅ Checklist de segurança documentado
-- 🟡 WAF depende do ambiente OCI; rotação/External Secrets e DAST já estão automatizados e aguardam somente configuração do ambiente
+- ✅ OCI WAF parametrizado no Terraform com rate limiting básico; ativação depende somente do Load Balancer/terraform apply do ambiente
 
 
 ## IaC OCI
+
+- ✅ OCI WAF no Terraform, opcional e anexado a Load Balancer por OCID
 
 - ✅ Provider OCI 8.29 parametrizado
 - ✅ Home region provider para operações IAM do OKE
@@ -255,4 +257,4 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Checklist de go-live/corte/rollback documentado
 - ✅ Scripts shell operacionais validados no CI
 - 🟡 Execução real do smoke/DAST depende das URLs e credenciais do ambiente de staging
-- 🟡 WAF, DNS, TLS, Vault e recursos OCI precisam ser aplicados/confirmados no ambiente real
+- 🟡 DNS/TLS/Vault/OKE/PostgreSQL/Object Storage/WAF precisam ser aplicados e confirmados no ambiente real
