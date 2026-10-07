@@ -20,71 +20,6 @@ function refreshCookieOptions(expires: Date) {
     secure: config.NODE_ENV === "production",
     expires,
   };
-  app.post("/v1/auth/password-reset/request", async (request, reply) => {
-    const body = z.object({
-      tenantId: z.string().uuid(),
-      email: z.string().email(),
-    }).parse(request.body);
-
-    const result = await createPasswordReset(body);
-    return reply.code(202).send({
-      accepted: true,
-      ...(config.NODE_ENV !== "production" && result.token
-        ? { devResetToken: result.token, expiresAt: result.expiresAt }
-        : {}),
-    });
-  });
-
-  app.post("/v1/auth/password-reset/confirm", async (request, reply) => {
-    const body = z.object({
-      token: z.string().min(20),
-      newPassword: z.string().min(12).max(200),
-    }).parse(request.body);
-
-    const result = await consumePasswordReset(body);
-    if (result.kind === "invalid_token") {
-      return reply.code(410).send({ message: "Token inválido ou expirado." });
-    }
-    return reply.code(200).send({ reset: true });
-  });
-
-  app.post("/v1/auth/mfa/setup", { preHandler: app.authenticate }, async (request, reply) => {
-    const result = await setupMfa({
-      tenantId: request.user.tenantId,
-      userId: request.user.sub,
-    });
-    if (result.kind === "not_found") {
-      return reply.code(404).send({ message: "Usuário não encontrado." });
-    }
-    return reply.code(200).send({
-      secret: result.secret,
-      otpauthUri: result.otpauthUri,
-    });
-  });
-
-  app.post("/v1/auth/mfa/confirm", { preHandler: app.authenticate }, async (request, reply) => {
-    const body = z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(request.body);
-    const result = await confirmMfa({
-      tenantId: request.user.tenantId,
-      userId: request.user.sub,
-      token: body.otp,
-    });
-    if (result.kind === "not_setup") return reply.code(409).send({ message: "MFA ainda não foi iniciado." });
-    if (result.kind === "invalid_token") return reply.code(422).send({ message: "Código MFA inválido." });
-    return reply.code(200).send({ enabled: true });
-  });
-
-  app.post("/v1/auth/mfa/disable", { preHandler: app.authenticate }, async (request, reply) => {
-    const body = z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(request.body);
-    const result = await disableMfa({
-      tenantId: request.user.tenantId,
-      userId: request.user.sub,
-      token: body.otp,
-    });
-    if (result.kind === "not_enabled") return reply.code(409).send({ message: "MFA não está habilitado." });
-    if (result.kind === "invalid_token") return reply.code(422).send({ message: "Código MFA inválido." });
-    return reply.code(200).send({ enabled: false });
-  });
 }
 
 export async function identityRoutes(app: FastifyInstance): Promise<void> {
@@ -158,5 +93,79 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
     if (token) await revokeRefreshToken(token);
     reply.clearCookie(refreshCookieName, { path: "/v1/auth" });
     return reply.code(204).send();
+  });
+
+  app.post("/v1/auth/password-reset/request", async (request, reply) => {
+    const body = z.object({
+      tenantId: z.string().uuid(),
+      email: z.string().email(),
+    }).parse(request.body);
+
+    const result = await createPasswordReset(body);
+    return reply.code(202).send({
+      accepted: true,
+      ...(config.NODE_ENV !== "production" && result.token
+        ? { devResetToken: result.token, expiresAt: result.expiresAt }
+        : {}),
+    });
+  });
+
+  app.post("/v1/auth/password-reset/confirm", async (request, reply) => {
+    const body = z.object({
+      token: z.string().min(20),
+      newPassword: z.string().min(12).max(200),
+    }).parse(request.body);
+
+    const result = await consumePasswordReset(body);
+    if (result.kind === "invalid_token") {
+      return reply.code(410).send({ message: "Token inválido ou expirado." });
+    }
+    return reply.code(200).send({ reset: true });
+  });
+
+  app.post("/v1/auth/mfa/setup", { preHandler: app.authenticate }, async (request, reply) => {
+    const result = await setupMfa({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+    if (result.kind === "not_found") {
+      return reply.code(404).send({ message: "Usuário não encontrado." });
+    }
+    return reply.code(200).send({
+      secret: result.secret,
+      otpauthUri: result.otpauthUri,
+    });
+  });
+
+  app.post("/v1/auth/mfa/confirm", { preHandler: app.authenticate }, async (request, reply) => {
+    const body = z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(request.body);
+    const result = await confirmMfa({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+      token: body.otp,
+    });
+    if (result.kind === "not_setup") {
+      return reply.code(409).send({ message: "MFA ainda não foi iniciado." });
+    }
+    if (result.kind === "invalid_token") {
+      return reply.code(422).send({ message: "Código MFA inválido." });
+    }
+    return reply.code(200).send({ enabled: true });
+  });
+
+  app.post("/v1/auth/mfa/disable", { preHandler: app.authenticate }, async (request, reply) => {
+    const body = z.object({ otp: z.string().regex(/^\d{6}$/) }).parse(request.body);
+    const result = await disableMfa({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+      token: body.otp,
+    });
+    if (result.kind === "not_enabled") {
+      return reply.code(409).send({ message: "MFA não está habilitado." });
+    }
+    if (result.kind === "invalid_token") {
+      return reply.code(422).send({ message: "Código MFA inválido." });
+    }
+    return reply.code(200).send({ enabled: false });
   });
 }
