@@ -1,4 +1,5 @@
 import { withTenantTransaction } from "../../db.js";
+import { getPresignedDownloadUrl } from "../../storage.js";
 
 async function canClose(
   client: import("../../db.js").DbClient,
@@ -204,4 +205,80 @@ export async function createRetification(input: {
 
     return { kind: "created" as const, request: created.rows[0] };
   });
+}
+
+
+export async function getClosureDocument(input: {
+  tenantId: string;
+  requestId: string;
+  actorUserId: string;
+}) {
+  const document = await withTenantTransaction(input.tenantId, async (client) => {
+    const access = await client.query(
+      `SELECT 1
+         FROM requests r
+         LEFT JOIN memberships mo
+           ON mo.sector_id = r.origin_sector_id
+          AND mo.user_id = $2
+          AND mo.active = true
+         LEFT JOIN memberships md
+           ON md.sector_id = r.destination_sector_id
+          AND md.user_id = $2
+          AND md.active = true
+         LEFT JOIN tenant_users tu
+           ON tu.tenant_id = r.tenant_id
+          AND tu.user_id = $2
+          AND tu.active = true
+          AND tu.role IN ('ADMIN', 'AUDITOR')
+        WHERE r.id = $1
+          AND (mo.id IS NOT NULL OR md.id IS NOT NULL OR tu.id IS NOT NULL)
+        LIMIT 1`,
+      [input.requestId, input.actorUserId],
+    );
+
+    if (access.rowCount !== 1) {
+      return { kind: "forbidden_or_not_found" as const };
+    }
+
+    const result = await client.query<{
+      id: string;
+      status: string;
+      pdf_storage_key: string | null;
+      pdf_sha256: string | null;
+      attempts: number;
+      last_error: string | null;
+      generated_at: Date | null;
+    }>(
+      `SELECT id, status, pdf_storage_key, pdf_sha256, attempts, last_error, generated_at
+         FROM closure_documents
+        WHERE request_id = $1
+        LIMIT 1`,
+      [input.requestId],
+    );
+
+    const row = result.rows[0];
+    if (!row) return { kind: "not_found" as const };
+    return { kind: "ok" as const, document: row };
+  });
+
+  if (document.kind !== "ok") return document;
+
+  const row = document.document;
+  const downloadUrl =
+    row.status === "READY" && row.pdf_storage_key
+      ? await getPresignedDownloadUrl(row.pdf_storage_key, 300)
+      : null;
+
+  return {
+    kind: "ok" as const,
+    document: {
+      id: row.id,
+      status: row.status,
+      sha256: row.pdf_sha256,
+      attempts: row.attempts,
+      lastError: row.last_error,
+      generatedAt: row.generated_at,
+      downloadUrl,
+    },
+  };
 }
