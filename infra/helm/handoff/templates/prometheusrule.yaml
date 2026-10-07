@@ -1,0 +1,43 @@
+{{- if .Values.observability.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: handoff-api
+  labels:
+    {{- include "handoff.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: handoff.api
+      rules:
+        - alert: HandoffApiDown
+          expr: up{service="handoff-api"} == 0
+          for: {{ .Values.observability.prometheusRule.apiDownFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: Handoff API indisponível
+            description: O alvo Prometheus da API está fora do ar.
+
+        - alert: HandoffDatabaseUnavailable
+          expr: handoff_database_up == 0
+          for: {{ .Values.observability.prometheusRule.databaseDownFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: Banco do Handoff indisponível
+            description: A API não consegue executar a verificação de conectividade com PostgreSQL.
+
+        - alert: HandoffHigh5xxRate
+          expr: |
+            (
+              sum(rate(handoff_http_requests_total{status=~"5.."}[5m]))
+              /
+              clamp_min(sum(rate(handoff_http_requests_total[5m])), 0.001)
+            ) > {{ .Values.observability.prometheusRule.high5xxRatio }}
+          for: {{ .Values.observability.prometheusRule.high5xxFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: Taxa elevada de HTTP 5xx no Handoff
+            description: Mais de {{ mul .Values.observability.prometheusRule.high5xxRatio 100 }}% das requisições estão retornando 5xx.
+{{- end }}
