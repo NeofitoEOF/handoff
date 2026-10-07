@@ -291,3 +291,21 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Testes de integração em PostgreSQL real
 - ✅ Documentação em `docs/lgpd-retencao.md`
 - ✅ CI completo verde após implementação
+
+
+## E2E local de negócio
+
+- ✅ Stack local de homologação com PostgreSQL + migration + API + web
+- ✅ Provisionamento de tenant por API
+- ✅ Login real com RLS aplicado ao tenant
+- ✅ Convite/aceite de Aprovador, Gestor e Membro
+- ✅ Criação e atribuição de solicitação via HTTP
+- ✅ Preenchimento/submissão de múltiplos itens
+- ✅ Aprovação parcial + devolução + correção + reenvio
+- ✅ Fechamento e estado final CLOSED
+- ✅ Verificação da cadeia de auditoria no fluxo completo
+- ✅ Correção de ordenação numérica da cadeia acima de 9 eventos
+- ✅ Correção de login/refresh/convite/reset sob RLS
+- ✅ Correção do migrador para execução independente do diretório atual
+- ✅ Workflow Local Staging E2E automatizado
+- ✅ CI cancela execuções obsoletas da mesma branch/PR
