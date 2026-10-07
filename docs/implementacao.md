@@ -309,3 +309,32 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Correção do migrador para execução independente do diretório atual
 - ✅ Workflow Local Staging E2E automatizado
 - ✅ CI cancela execuções obsoletas da mesma branch/PR
+
+
+## Automação de deploy
+
+- ✅ Terraform Plan workflow com state remoto no OCI Object Storage
+- ✅ Terraform Apply manual com confirmação explícita e GitHub Environment
+- ✅ State separado entre staging e production
+- ✅ Apply bloqueado enquanto remote state não estiver habilitado
+- ✅ Deploy Helm manual por SHA/tag imutável
+- ✅ Rollout status de API, web e worker
+- ✅ Smoke automático pós-deploy
+- ✅ Contrato de variables/secrets documentado
+- ✅ actionlint no CI para todos os GitHub Actions
+- ✅ Workflow Terraform Plan reconhecido e corretamente skipped enquanto OCI não estiver habilitado
+- 🟡 Execução real de plan/apply/deploy depende das credenciais e environments GitHub/OCI
+
+
+## Observabilidade de produção
+
+- ✅ Liveness independente em /live
+- ✅ Readiness com PostgreSQL em /ready
+- ✅ /health mantido por compatibilidade
+- ✅ Métrica handoff_database_up
+- ✅ PrometheusRule opcional no Helm
+- ✅ Alerta de API indisponível
+- ✅ Alerta de banco indisponível
+- ✅ Alerta de taxa de HTTP 5xx sustentada
+- ✅ SLOs e ações operacionais documentados
+- ✅ Helm lint, typecheck, testes, E2E local, CodeQL e Trivy verdes no mesmo HEAD
