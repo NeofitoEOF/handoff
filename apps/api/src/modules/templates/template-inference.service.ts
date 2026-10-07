@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { scanBuffer } from "../../antivirus.js";
 
 type FieldType = "TEXT" | "NUMBER" | "MONEY" | "DATE" | "CPF" | "CNPJ" | "SELECT" | "BOOLEAN" | "ATTACHMENT";
 
@@ -41,6 +42,14 @@ function inferType(values: unknown[], header: string): FieldType {
 export async function inferTemplateFromXlsx(buffer: Buffer) {
   if (buffer.byteLength > 20 * 1024 * 1024) {
     return { kind: "file_too_large" as const };
+  }
+
+  const antivirus = await scanBuffer(buffer);
+  if (antivirus.status === "INFECTED") {
+    return { kind: "malware_detected" as const, signature: antivirus.signature };
+  }
+  if (antivirus.status === "UNAVAILABLE") {
+    return { kind: "antivirus_unavailable" as const };
   }
 
   const workbook = new ExcelJS.Workbook();
