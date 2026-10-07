@@ -17,6 +17,8 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
   app.put("/internal/billing/tenants/:tenantId", async (request, reply) => {
     const params = z.object({ tenantId: z.string().uuid() }).parse(request.params);
     const body = z.object({
+      monthlyRequestLimit: z.number().int().min(0).max(2147483647).nullable().optional(),
+      storageLimitBytes: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable().optional(),
       plan: z.enum(["STARTER", "BUSINESS", "ENTERPRISE"]),
       status: z.enum(["TRIAL", "ACTIVE", "PAST_DUE", "SUSPENDED", "CANCELLED"]),
       monthlyPricePerSectorCents: z.number().int().min(0),
@@ -35,6 +37,8 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       status: body.status,
       monthlyPricePerSectorCents: body.monthlyPricePerSectorCents,
       currency: body.currency.toUpperCase(),
+      ...(body.monthlyRequestLimit !== undefined ? { monthlyRequestLimit: body.monthlyRequestLimit } : {}),
+      ...(body.storageLimitBytes !== undefined ? { storageLimitBytes: body.storageLimitBytes } : {}),
       ...(body.provider !== undefined ? { provider: body.provider } : {}),
       ...(body.externalCustomerId !== undefined ? { externalCustomerId: body.externalCustomerId } : {}),
       ...(body.externalSubscriptionId !== undefined ? { externalSubscriptionId: body.externalSubscriptionId } : {}),

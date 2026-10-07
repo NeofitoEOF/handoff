@@ -127,6 +127,17 @@ export async function buildApp() {
       });
     }
 
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P0001" && "message" in error) {
+      if (error.message === "monthly_request_limit" || error.message === "billing_inactive") {
+        return reply.code(409).send({
+          code: error.message,
+          message: error.message === "monthly_request_limit"
+            ? "Limite mensal de solicitações da empresa atingido."
+            : "Plano da empresa suspenso ou cancelado.",
+        });
+      }
+    }
+
     if (typeof error === "object" && error !== null && "statusCode" in error) {
       const statusCode = (error as { statusCode?: unknown }).statusCode;
       if (typeof statusCode === "number") {

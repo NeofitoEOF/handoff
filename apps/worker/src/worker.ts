@@ -763,7 +763,15 @@ async function tick() {
   );
   for (const tenant of tenants.rows) {
     await processAuditAnchor(tenant.id);
-    await materializeRecurrences(tenant.id);
+    try {
+      await materializeRecurrences(tenant.id);
+    } catch (error) {
+      const quotaBlocked = typeof error === "object" && error !== null &&
+        "code" in error && error.code === "P0001" && "message" in error &&
+        (error.message === "monthly_request_limit" || error.message === "billing_inactive");
+      if (!quotaBlocked) throw error;
+      process.stderr.write(`[worker] recurrence deferred for tenant=${tenant.id}: ${error.message}\n`);
+    }
     await processClosureDocuments(tenant.id);
     await processTeamsOutbox(tenant.id);
     await enqueueReminders(tenant.id);

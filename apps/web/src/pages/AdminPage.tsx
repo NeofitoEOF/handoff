@@ -18,7 +18,7 @@ export function AdminPage() {
       monthly_price_per_sector_cents: number;
       currency: string;
     };
-    entitlements: { maxSectors: number | null; storageBytes: number | null };
+    entitlements: { maxSectors: number | null; storageBytes: number | null; monthlyRequests: number | null };
     usage: { enabledSectors: number; requestsThisMonth: number; storageBytes: number };
     estimatedMonthlyAmountCents: number;
   } | null>(null);
@@ -33,7 +33,7 @@ export function AdminPage() {
         monthly_price_per_sector_cents: number;
         currency: string;
       };
-      entitlements: { maxSectors: number | null; storageBytes: number | null };
+      entitlements: { maxSectors: number | null; storageBytes: number | null; monthlyRequests: number | null };
       usage: { enabledSectors: number; requestsThisMonth: number; storageBytes: number };
       estimatedMonthlyAmountCents: number;
     }>("/v1/admin/billing")
@@ -213,7 +213,7 @@ export function AdminPage() {
             </div>
             <div className="metric-card">
               <span>Solicitações no mês</span>
-              <strong>{billingSummary.usage.requestsThisMonth}</strong>
+              <strong>{billingSummary.usage.requestsThisMonth}{billingSummary.entitlements.monthlyRequests !== null ? `/${billingSummary.entitlements.monthlyRequests}` : ""}</strong>
             </div>
             <div className="metric-card">
               <span>Estimativa mensal</span>

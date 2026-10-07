@@ -35,8 +35,10 @@ export async function getTenantPlan(
     status: BillingStatus;
     monthly_price_per_sector_cents: number;
     currency: string;
+    monthly_request_limit: number | null;
+    storage_limit_bytes: string | null;
   }>(
-    `SELECT plan, status, monthly_price_per_sector_cents, currency
+    `SELECT plan, status, monthly_price_per_sector_cents, currency, monthly_request_limit, storage_limit_bytes
        FROM billing_profiles
       WHERE tenant_id = $1
       LIMIT 1`,
@@ -49,8 +51,24 @@ export async function getTenantPlan(
       status: "TRIAL" as const,
       monthly_price_per_sector_cents: 0,
       currency: "BRL",
+      monthly_request_limit: null,
+      storage_limit_bytes: null,
     }
   );
+}
+
+export function effectiveEntitlements(profile: {
+  plan: BillingPlan;
+  monthly_request_limit: number | null;
+  storage_limit_bytes: string | null;
+}) {
+  return {
+    ...PLAN_ENTITLEMENTS[profile.plan],
+    monthlyRequests: profile.monthly_request_limit,
+    storageBytes: profile.storage_limit_bytes == null
+      ? PLAN_ENTITLEMENTS[profile.plan].storageBytes
+      : Number(profile.storage_limit_bytes),
+  };
 }
 
 export async function canEnableAnotherSector(
@@ -114,7 +132,7 @@ export async function checkTenantStorageCapacity(
     };
   }
 
-  const entitlement = PLAN_ENTITLEMENTS[profile.plan];
+  const entitlement = effectiveEntitlements(profile);
   if (entitlement.storageBytes === null) {
     return { allowed: true as const, profile, usedBytes: 0, limitBytes: null };
   }
@@ -163,7 +181,7 @@ export async function getBillingSummary(input: {
     }
 
     const profile = await getTenantPlan(client, input.tenantId);
-    const entitlement = PLAN_ENTITLEMENTS[profile.plan];
+    const entitlement = effectiveEntitlements(profile);
 
     const sectorCount = await client.query<{ count: string }>(
       `SELECT count(*)::text AS count FROM sectors WHERE active = true`,
@@ -171,7 +189,7 @@ export async function getBillingSummary(input: {
     const requestCount = await client.query<{ count: string }>(
       `SELECT count(*)::text AS count
          FROM requests
-        WHERE created_at >= date_trunc('month', now())`,
+        WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,
     );
     const storage = await client.query<{ bytes: string }>(
       `SELECT
@@ -214,6 +232,8 @@ export async function updateBillingProfile(input: {
   externalSubscriptionId?: string | null;
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
+  monthlyRequestLimit?: number | null;
+  storageLimitBytes?: number | null;
 }) {
   if (!input.platformAdminKey || input.platformAdminKey !== config.PLATFORM_ADMIN_KEY) {
     return { kind: "forbidden" as const };
@@ -225,39 +245,47 @@ export async function updateBillingProfile(input: {
   );
   if (tenant.rowCount !== 1) return { kind: "tenant_not_found" as const };
 
-  const result = await pool.query(
-    `INSERT INTO billing_profiles
-      (tenant_id, plan, status, monthly_price_per_sector_cents, currency,
-       provider, external_customer_id, external_subscription_id,
-       current_period_start, current_period_end, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now())
-     ON CONFLICT (tenant_id)
-     DO UPDATE SET
-       plan = EXCLUDED.plan,
-       status = EXCLUDED.status,
-       monthly_price_per_sector_cents = EXCLUDED.monthly_price_per_sector_cents,
-       currency = EXCLUDED.currency,
-       provider = EXCLUDED.provider,
-       external_customer_id = EXCLUDED.external_customer_id,
-       external_subscription_id = EXCLUDED.external_subscription_id,
-       current_period_start = EXCLUDED.current_period_start,
-       current_period_end = EXCLUDED.current_period_end,
-       updated_at = now()
-     RETURNING tenant_id, plan, status, monthly_price_per_sector_cents, currency,
-               provider, current_period_start, current_period_end`,
-    [
-      input.tenantId,
-      input.plan,
-      input.status,
-      input.monthlyPricePerSectorCents,
-      input.currency,
-      input.provider ?? null,
-      input.externalCustomerId ?? null,
-      input.externalSubscriptionId ?? null,
-      input.currentPeriodStart ?? null,
-      input.currentPeriodEnd ?? null,
-    ],
-  );
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const result = await client.query(
+      `INSERT INTO billing_profiles
+        (tenant_id, plan, status, monthly_price_per_sector_cents, currency,
+         provider, external_customer_id, external_subscription_id,
+         current_period_start, current_period_end, monthly_request_limit, storage_limit_bytes, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now())
+       ON CONFLICT (tenant_id)
+       DO UPDATE SET
+         plan = EXCLUDED.plan,
+         status = EXCLUDED.status,
+         monthly_price_per_sector_cents = EXCLUDED.monthly_price_per_sector_cents,
+         currency = EXCLUDED.currency,
+         provider = EXCLUDED.provider,
+         external_customer_id = EXCLUDED.external_customer_id,
+         external_subscription_id = EXCLUDED.external_subscription_id,
+         current_period_start = EXCLUDED.current_period_start,
+         current_period_end = EXCLUDED.current_period_end,
+         monthly_request_limit = CASE WHEN $13 THEN EXCLUDED.monthly_request_limit ELSE billing_profiles.monthly_request_limit END,
+         storage_limit_bytes = CASE WHEN $14 THEN EXCLUDED.storage_limit_bytes ELSE billing_profiles.storage_limit_bytes END,
+         updated_at = now()
+       RETURNING tenant_id, plan, status, monthly_price_per_sector_cents, currency,
+                 provider, current_period_start, current_period_end, monthly_request_limit, storage_limit_bytes`,
+      [
+        input.tenantId,
+        input.plan,
+        input.status,
+        input.monthlyPricePerSectorCents,
+        input.currency,
+        input.provider ?? null,
+        input.externalCustomerId ?? null,
+        input.externalSubscriptionId ?? null,
+        input.currentPeriodStart ?? null,
+        input.currentPeriodEnd ?? null,
+        input.monthlyRequestLimit ?? null,
+        input.storageLimitBytes ?? null,
+        input.monthlyRequestLimit !== undefined,
+        input.storageLimitBytes !== undefined,
+      ],
+    );
 
-  return { kind: "updated" as const, profile: result.rows[0] };
+    return { kind: "updated" as const, profile: result.rows[0] };
+  });
 }

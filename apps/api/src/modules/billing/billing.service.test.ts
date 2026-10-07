@@ -29,3 +29,13 @@ describe("storage quota", () => {
     expect(query.mock.calls[2]![1]).toEqual(["tenant"]);
   });
 });
+
+
+it("applies the contracted Enterprise storage boundary", async () => {
+  const query = vi.fn()
+    .mockResolvedValueOnce({ rows: [{ plan: "ENTERPRISE", status: "ACTIVE", storage_limit_bytes: "100" }] })
+    .mockResolvedValueOnce({ rows: [] })
+    .mockResolvedValueOnce({ rows: [{ bytes: "90" }] });
+  const result = await checkCapacity({ query } as unknown as DbClient, "tenant", 11);
+  expect(result).toMatchObject({ allowed: false, reason: "storage_limit", limitBytes: 100, usedBytes: 90 });
+});

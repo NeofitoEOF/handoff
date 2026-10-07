@@ -409,9 +409,9 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Teste PostgreSQL: quatro criações disputam a última vaga; somente uma cria setor e evento de auditoria
 - ✅ Uso de armazenamento filtrado explicitamente por tenant, além do RLS
 - ✅ Tamanho de entrada validado como inteiro seguro não negativo; testes de limite exato e excesso
-- ⏳ Quota de solicitações/mês: definir os valores comerciais por plano antes de aplicar em criação, campanhas, recorrências e retificações
+- ✅ Quota mensal configurável por contrato aplicada no banco a criação, campanhas, recorrências e retificações; cadastrar valores comerciais na operação
 - ✅ Rate limit agregado por tenant para todas as instâncias da API (JWT, API key e convidado)
-- ⏳ Enterprise: definir armazenamento contratual (o código atual considera ilimitado)
+- ✅ Armazenamento contratual configurável, inclusive Enterprise; sem contrato segue o padrão do plano
 
 ## Rate limit compartilhado por empresa
 
@@ -421,3 +421,16 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Resposta 429 com Retry-After; contador limitado e uma linha por empresa
 - ✅ Testes PostgreSQL de concorrência, renovação da janela e isolamento RLS
 - ✅ Limites locais por IP/login/OTP preservados como proteção adicional
+
+
+## Quotas contratuais e recorrências
+
+- ✅ Endpoint de plataforma configura limites mensais e bytes; omissão preserva configuração
+- ✅ Resumo de cobrança e Administração mostram quota mensal efetiva
+- ✅ Quota mensal concorrente por tenant; mês civil UTC; cancelamentos contam
+- ✅ Campanhas revertidas integralmente se ultrapassarem quota
+- ✅ Retry idempotente sem inserção não consome quota
+- ✅ Recorrências bloqueadas preservam execução pendente e não paralisam outbox
+- ✅ Testes PostgreSQL de concorrência, idempotência, rollback de lote e suspensão
+- ✅ Documentação em `docs/contract-quotas.md`
+- 🟡 Aplicação no ambiente real depende de credenciais/URLs e configuração dos contratos
