@@ -34,6 +34,141 @@ async function withTenant<T>(tenantId: string, fn: (client: pg.PoolClient) => Pr
   }
 }
 
+function competenceFor(date: Date, frequency: "WEEKLY" | "MONTHLY"): string {
+  if (frequency === "MONTHLY") {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
+  const tmp = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function nextOccurrence(date: Date, frequency: "WEEKLY" | "MONTHLY"): Date {
+  const next = new Date(date);
+  if (frequency === "WEEKLY") {
+    next.setUTCDate(next.getUTCDate() + 7);
+  } else {
+    next.setUTCMonth(next.getUTCMonth() + 1);
+  }
+  return next;
+}
+
+async function materializeRecurrences(tenantId: string) {
+  await withTenant(tenantId, async (client) => {
+    const recurrences = await client.query<{
+      id: string;
+      origin_sector_id: string;
+      template_version_id: string | null;
+      destination_sector_ids: string[];
+      title: string;
+      instructions: string | null;
+      frequency: "WEEKLY" | "MONTHLY";
+      next_run_at: Date;
+      due_offset_days: number;
+      created_by: string;
+    }>(
+      `SELECT id, origin_sector_id, template_version_id, destination_sector_ids,
+              title, instructions, frequency, next_run_at, due_offset_days, created_by
+         FROM recurrences
+        WHERE active = true
+          AND next_run_at <= now()
+        ORDER BY next_run_at
+        LIMIT 20
+        FOR UPDATE SKIP LOCKED`,
+    );
+
+    for (const recurrence of recurrences.rows) {
+      const scheduledFor = recurrence.next_run_at;
+      const run = await client.query<{ id: string }>(
+        `INSERT INTO recurrence_runs (tenant_id, recurrence_id, scheduled_for)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (tenant_id, recurrence_id, scheduled_for) DO NOTHING
+         RETURNING id`,
+        [tenantId, recurrence.id, scheduledFor],
+      );
+
+      if (run.rowCount === 1) {
+        const dueAt = new Date(scheduledFor);
+        dueAt.setUTCDate(dueAt.getUTCDate() + recurrence.due_offset_days);
+        const competence = competenceFor(scheduledFor, recurrence.frequency);
+
+        const campaign = await client.query<{ id: string }>(
+          `INSERT INTO campaigns
+            (tenant_id, origin_sector_id, template_version_id, title, competence,
+             due_at, instructions, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id`,
+          [
+            tenantId,
+            recurrence.origin_sector_id,
+            recurrence.template_version_id,
+            recurrence.title,
+            competence,
+            dueAt,
+            recurrence.instructions,
+            recurrence.created_by,
+          ],
+        );
+        const campaignId = campaign.rows[0]!.id;
+
+        const destinations = await client.query<{ id: string }>(
+          `SELECT id
+             FROM sectors
+            WHERE id = ANY($1::uuid[])
+              AND active = true
+              AND id <> $2`,
+          [recurrence.destination_sector_ids, recurrence.origin_sector_id],
+        );
+
+        for (const destination of destinations.rows) {
+          const request = await client.query<{ id: string }>(
+            `INSERT INTO requests
+              (tenant_id, origin_sector_id, destination_sector_id, created_by, title,
+               due_at, status, competence, instructions, template_version_id)
+             VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8, $9)
+             ON CONFLICT DO NOTHING
+             RETURNING id`,
+            [
+              tenantId,
+              recurrence.origin_sector_id,
+              destination.id,
+              recurrence.created_by,
+              recurrence.title,
+              dueAt,
+              competence,
+              recurrence.instructions,
+              recurrence.template_version_id,
+            ],
+          );
+
+          if (request.rows[0]) {
+            await client.query(
+              `INSERT INTO campaign_requests
+                (tenant_id, campaign_id, request_id, destination_sector_id)
+               VALUES ($1, $2, $3, $4)`,
+              [tenantId, campaignId, request.rows[0].id, destination.id],
+            );
+          }
+        }
+
+        await client.query(
+          `UPDATE recurrence_runs SET campaign_id = $2 WHERE id = $1`,
+          [run.rows[0]!.id, campaignId],
+        );
+      }
+
+      await client.query(
+        `UPDATE recurrences SET next_run_at = $2 WHERE id = $1`,
+        [recurrence.id, nextOccurrence(scheduledFor, recurrence.frequency)],
+      );
+    }
+  });
+}
+
 async function enqueueReminders(tenantId: string) {
   await withTenant(tenantId, async (client) => {
     const rows = await client.query<{
@@ -220,6 +355,7 @@ async function tick() {
     `SELECT id FROM tenants WHERE active = true ORDER BY id`,
   );
   for (const tenant of tenants.rows) {
+    await materializeRecurrences(tenant.id);
     await enqueueReminders(tenant.id);
     await processOutbox(tenant.id);
   }
