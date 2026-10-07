@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
 import { isSectorManager } from "../../authorization.js";
+import { enqueueEmail } from "../notifications/notification.service.js";
 
 function hash(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -94,11 +95,12 @@ export async function issueGuestOtp(linkToken: string) {
   return withTenantTransaction(scoped.tenantId, async (client) => {
     const linkResult = await client.query<{
       id: string;
+      request_id: string;
       email: string;
       expires_at: Date;
       revoked_at: Date | null;
     }>(
-      `SELECT id, email, expires_at, revoked_at
+      `SELECT id, request_id, email, expires_at, revoked_at
          FROM guest_links
         WHERE link_token_hash = $1
         FOR UPDATE`,
@@ -126,6 +128,15 @@ export async function issueGuestOtp(linkToken: string) {
        VALUES ($1, $2, $3, $4)`,
       [scoped.tenantId, link.id, hash(otp), expiresAt],
     );
+
+    await enqueueEmail(client, {
+      tenantId: scoped.tenantId,
+      requestId: link.request_id,
+      recipientEmail: link.email,
+      subject: "[Handoff] Seu código de acesso",
+      bodyText: `Seu código de acesso é ${otp}. Ele expira em 10 minutos.`,
+      dedupeKey: `guest-otp:${link.id}:${expiresAt.toISOString()}`,
+    });
 
     return {
       kind: "issued" as const,
