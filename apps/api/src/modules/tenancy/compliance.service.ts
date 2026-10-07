@@ -23,7 +23,7 @@ export async function getComplianceSettings(input: {
        VALUES ($1)
        ON CONFLICT (tenant_id) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
        RETURNING tenant_id, retention_years, default_legal_basis,
-                 auto_purge_enabled, updated_at`,
+                 auto_purge_enabled, dpa_status, dpa_reference, dpa_signed_at, updated_at`,
       [input.tenantId],
     );
 
@@ -36,6 +36,9 @@ export async function updateComplianceSettings(input: {
   actorUserId: string;
   retentionYears: number;
   defaultLegalBasis?: string;
+  dpaStatus?: "NOT_CONFIGURED" | "DRAFT" | "SIGNED";
+  dpaReference?: string;
+  dpaSignedAt?: Date;
 }) {
   return withTenantTransaction(input.tenantId, async (client) => {
     if (!(await requireAdmin(client, input.tenantId, input.actorUserId))) {
@@ -43,7 +46,7 @@ export async function updateComplianceSettings(input: {
     }
 
     const before = await client.query(
-      `SELECT retention_years, default_legal_basis
+      `SELECT retention_years, default_legal_basis, dpa_status, dpa_reference, dpa_signed_at
          FROM tenant_compliance_settings
         WHERE tenant_id = $1`,
       [input.tenantId],
@@ -51,20 +54,27 @@ export async function updateComplianceSettings(input: {
 
     const result = await client.query(
       `INSERT INTO tenant_compliance_settings
-        (tenant_id, retention_years, default_legal_basis, updated_by, updated_at)
-       VALUES ($1, $2, $3, $4, now())
+        (tenant_id, retention_years, default_legal_basis, dpa_status,
+         dpa_reference, dpa_signed_at, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
        ON CONFLICT (tenant_id)
        DO UPDATE SET
          retention_years = EXCLUDED.retention_years,
          default_legal_basis = EXCLUDED.default_legal_basis,
+         dpa_status = EXCLUDED.dpa_status,
+         dpa_reference = EXCLUDED.dpa_reference,
+         dpa_signed_at = EXCLUDED.dpa_signed_at,
          updated_by = EXCLUDED.updated_by,
          updated_at = now()
        RETURNING tenant_id, retention_years, default_legal_basis,
-                 auto_purge_enabled, updated_at`,
+                 auto_purge_enabled, dpa_status, dpa_reference, dpa_signed_at, updated_at`,
       [
         input.tenantId,
         input.retentionYears,
         input.defaultLegalBasis ?? null,
+        input.dpaStatus ?? "NOT_CONFIGURED",
+        input.dpaReference ?? null,
+        input.dpaSignedAt ?? null,
         input.actorUserId,
       ],
     );
@@ -220,7 +230,15 @@ export async function updateDataSubjectRequest(input: {
     );
     if (!current.rows[0]) return { kind: "not_found" as const };
 
+    const currentStatus = current.rows[0].status as string;
+    if (["COMPLETED", "REJECTED"].includes(currentStatus) && input.status !== currentStatus) {
+      return { kind: "terminal_state" as const, status: currentStatus };
+    }
+
     const completed = ["COMPLETED", "REJECTED"].includes(input.status);
+    if (completed && !input.resolution?.trim()) {
+      return { kind: "resolution_required" as const };
+    }
 
     const result = await client.query(
       `UPDATE data_subject_requests
@@ -358,5 +376,147 @@ export async function exportDataSubject(input: {
     );
 
     return { kind: "ok" as const, data: exported };
+  });
+}
+
+
+export async function listProcessingActivities(input: {
+  tenantId: string;
+  actorUserId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await requireAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const result = await client.query(
+      `SELECT id, name, purpose, legal_basis, data_categories, subject_categories,
+              processors, retention_years, active, created_at, updated_at
+         FROM data_processing_activities
+        ORDER BY active DESC, name ASC`,
+    );
+
+    return { kind: "ok" as const, data: result.rows };
+  });
+}
+
+export async function createProcessingActivity(input: {
+  tenantId: string;
+  actorUserId: string;
+  name: string;
+  purpose: string;
+  legalBasis: string;
+  dataCategories: string[];
+  subjectCategories: string[];
+  processors: string[];
+  retentionYears?: number;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await requireAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const result = await client.query(
+      `INSERT INTO data_processing_activities
+        (tenant_id, name, purpose, legal_basis, data_categories, subject_categories,
+         processors, retention_years, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5::text[], $6::text[], $7::text[], $8, $9, $9)
+       RETURNING id, name, purpose, legal_basis, data_categories, subject_categories,
+                 processors, retention_years, active, created_at, updated_at`,
+      [
+        input.tenantId,
+        input.name,
+        input.purpose,
+        input.legalBasis,
+        input.dataCategories,
+        input.subjectCategories,
+        input.processors,
+        input.retentionYears ?? null,
+        input.actorUserId,
+      ],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, 'PROCESSING_ACTIVITY_CREATED', 'processing_activity', $3, $4::jsonb)`,
+      [input.tenantId, input.actorUserId, result.rows[0].id, JSON.stringify(result.rows[0])],
+    );
+
+    return { kind: "created" as const, activity: result.rows[0] };
+  });
+}
+
+export async function updateProcessingActivity(input: {
+  tenantId: string;
+  actorUserId: string;
+  activityId: string;
+  name: string;
+  purpose: string;
+  legalBasis: string;
+  dataCategories: string[];
+  subjectCategories: string[];
+  processors: string[];
+  retentionYears?: number;
+  active: boolean;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await requireAdmin(client, input.tenantId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const before = await client.query(
+      `SELECT id, name, purpose, legal_basis, data_categories, subject_categories,
+              processors, retention_years, active
+         FROM data_processing_activities
+        WHERE id = $1
+        FOR UPDATE`,
+      [input.activityId],
+    );
+    if (!before.rows[0]) return { kind: "not_found" as const };
+
+    const result = await client.query(
+      `UPDATE data_processing_activities
+          SET name = $2,
+              purpose = $3,
+              legal_basis = $4,
+              data_categories = $5::text[],
+              subject_categories = $6::text[],
+              processors = $7::text[],
+              retention_years = $8,
+              active = $9,
+              updated_by = $10,
+              updated_at = now()
+        WHERE id = $1
+       RETURNING id, name, purpose, legal_basis, data_categories, subject_categories,
+                 processors, retention_years, active, created_at, updated_at`,
+      [
+        input.activityId,
+        input.name,
+        input.purpose,
+        input.legalBasis,
+        input.dataCategories,
+        input.subjectCategories,
+        input.processors,
+        input.retentionYears ?? null,
+        input.active,
+        input.actorUserId,
+      ],
+    );
+
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, before_data, after_data)
+       VALUES ($1, $2, 'PROCESSING_ACTIVITY_UPDATED', 'processing_activity', $3, $4::jsonb, $5::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        input.activityId,
+        JSON.stringify(before.rows[0]),
+        JSON.stringify(result.rows[0]),
+      ],
+    );
+
+    return { kind: "updated" as const, activity: result.rows[0] };
   });
 }
