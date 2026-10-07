@@ -6,6 +6,7 @@ import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { registerAuth } from "./auth.js";
 import { pool } from "./db.js";
+import { config } from "./config.js";
 import { requestRoutes } from "./modules/requests/request.routes.js";
 import { requestCreateRoutes } from "./modules/requests/request-create.routes.js";
 import { requestAssignmentRoutes } from "./modules/requests/request-assignment.routes.js";
@@ -31,11 +32,17 @@ import { commentRoutes } from "./modules/comments/comment.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
-    logger: true,
+    logger: {
+      redact: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "res.headers.set-cookie",
+      ],
+    },
   });
 
   await app.register(cors, {
-    origin: true,
+    origin: config.WEB_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),
     credentials: true,
   });
   await app.register(rateLimit, {
