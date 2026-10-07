@@ -6,6 +6,24 @@ export function AdminPage() {
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [entraTenantId, setEntraTenantId] = useState("");
+  const [microsoftEnabled, setMicrosoftEnabled] = useState(true);
+
+  async function saveMicrosoft() {
+    setError("");
+    try {
+      await api("/v1/admin/integrations/microsoft", {
+        method: "PUT",
+        body: JSON.stringify({
+          entraTenantId,
+          enabled: microsoftEnabled,
+        }),
+      });
+      setMessage("Integração Microsoft atualizada.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao configurar Microsoft.");
+    }
+  }
 
   async function setupMfa() {
     setError("");
@@ -67,6 +85,30 @@ export function AdminPage() {
             <button className="primary" onClick={() => void enableMfa()}>Confirmar MFA</button>
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <h2>Microsoft Entra ID</h2>
+        <p className="muted">Habilite login Microsoft para usuários já cadastrados na empresa.</p>
+        <label className="field">
+          <span>Tenant ID do Entra</span>
+          <input
+            value={entraTenantId}
+            onChange={(event) => setEntraTenantId(event.target.value)}
+            placeholder="00000000-0000-0000-0000-000000000000"
+          />
+        </label>
+        <label className="checkbox-field field">
+          <input
+            type="checkbox"
+            checked={microsoftEnabled}
+            onChange={(event) => setMicrosoftEnabled(event.target.checked)}
+          />
+          <span>Login Microsoft habilitado</span>
+        </label>
+        <button className="secondary" onClick={() => void saveMicrosoft()} disabled={!entraTenantId}>
+          Salvar Microsoft
+        </button>
       </div>
 
       <div className="card">
