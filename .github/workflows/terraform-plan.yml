@@ -32,6 +32,12 @@ jobs:
       TF_VAR_postgres_db_version: ${{ vars.OCI_POSTGRES_VERSION }}
       TF_VAR_postgres_system_type: ${{ vars.OCI_POSTGRES_SYSTEM_TYPE }}
       TF_VAR_postgres_storage_system_type: ${{ vars.OCI_POSTGRES_STORAGE_SYSTEM_TYPE }}
+      OCI_STATE_BUCKET: ${{ vars.OCI_STATE_BUCKET }}
+      OCI_OBJECT_STORAGE_NAMESPACE: ${{ vars.OCI_OBJECT_STORAGE_NAMESPACE }}
+      OCI_REGION: ${{ vars.OCI_REGION }}
+      TF_STATE_KEY: handoff/staging/terraform.tfstate
+      AWS_ACCESS_KEY_ID: ${{ secrets.OCI_STATE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_STATE_SECRET_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.OCI_STATE_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.OCI_STATE_SECRET_KEY }}
 
