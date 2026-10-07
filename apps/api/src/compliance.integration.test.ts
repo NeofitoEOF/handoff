@@ -21,6 +21,9 @@ suite("LGPD and retention", () => {
   let createDataSubjectRequest: typeof import("./modules/tenancy/compliance.service.js").createDataSubjectRequest;
   let updateDataSubjectRequest: typeof import("./modules/tenancy/compliance.service.js").updateDataSubjectRequest;
   let exportDataSubject: typeof import("./modules/tenancy/compliance.service.js").exportDataSubject;
+  let createProcessingActivity: typeof import("./modules/tenancy/compliance.service.js").createProcessingActivity;
+  let listProcessingActivities: typeof import("./modules/tenancy/compliance.service.js").listProcessingActivities;
+  let updateProcessingActivity: typeof import("./modules/tenancy/compliance.service.js").updateProcessingActivity;
 
   beforeAll(async () => {
     if (!enabled) return;
@@ -41,6 +44,9 @@ suite("LGPD and retention", () => {
       createDataSubjectRequest,
       updateDataSubjectRequest,
       exportDataSubject,
+      createProcessingActivity,
+      listProcessingActivities,
+      updateProcessingActivity,
     } = await import("./modules/tenancy/compliance.service.js"));
 
     admin = new Client({ connectionString: adminUrl! });
@@ -111,16 +117,31 @@ suite("LGPD and retention", () => {
     if (current.kind !== "ok") return;
     expect(current.settings.retention_years).toBe(5);
 
+    const invalidDpa = await updateComplianceSettings({
+      tenantId,
+      actorUserId: adminUserId,
+      retentionYears: 1,
+      defaultLegalBasis: "Execução contratual e obrigação legal aplicável.",
+      dpaStatus: "SIGNED",
+    });
+    expect(invalidDpa.kind).toBe("invalid_dpa");
+
+    const signedAt = new Date();
     const updated = await updateComplianceSettings({
       tenantId,
       actorUserId: adminUserId,
       retentionYears: 1,
       defaultLegalBasis: "Execução contratual e obrigação legal aplicável.",
+      dpaStatus: "SIGNED",
+      dpaReference: "DPA-2026-001",
+      dpaSignedAt: signedAt,
     });
 
     expect(updated.kind).toBe("updated");
     if (updated.kind !== "updated") return;
     expect(updated.settings.retention_years).toBe(1);
+    expect(updated.settings.dpa_status).toBe("SIGNED");
+    expect(updated.settings.dpa_reference).toBe("DPA-2026-001");
   });
 
   it("reports only closed/cancelled records older than the retention window", async () => {
@@ -137,6 +158,50 @@ suite("LGPD and retention", () => {
     expect(candidates.data).toHaveLength(1);
     expect(candidates.data[0]!.title).toBe("Solicitação antiga");
     expect(candidates.data[0]!.status).toBe("CLOSED");
+  });
+
+
+  it("maintains a tenant processing-activity register", async () => {
+    const created = await createProcessingActivity({
+      tenantId,
+      actorUserId: adminUserId,
+      name: "Gestão de solicitações interdepartamentais",
+      purpose: "Coletar, revisar e auditar informações entre áreas.",
+      legalBasis: "Execução contratual e legítimo interesse avaliado pelo controlador.",
+      dataCategories: ["identificação", "dados profissionais"],
+      subjectCategories: ["colaboradores"],
+      processors: ["Handoff"],
+      retentionYears: 5,
+    });
+
+    expect(created.kind).toBe("created");
+    if (created.kind !== "created") return;
+
+    const listed = await listProcessingActivities({
+      tenantId,
+      actorUserId: adminUserId,
+    });
+    expect(listed.kind).toBe("ok");
+    if (listed.kind !== "ok") return;
+    expect(listed.data.some((item) => item.id === created.activity.id)).toBe(true);
+
+    const updated = await updateProcessingActivity({
+      tenantId,
+      actorUserId: adminUserId,
+      activityId: created.activity.id as string,
+      name: "Gestão de solicitações entre áreas",
+      purpose: "Coletar, revisar, aprovar e auditar informações entre áreas.",
+      legalBasis: "Execução contratual e obrigação legal aplicável.",
+      dataCategories: ["identificação", "dados profissionais", "evidências"],
+      subjectCategories: ["colaboradores", "fornecedores"],
+      processors: ["Handoff", "OCI"],
+      retentionYears: 5,
+      active: true,
+    });
+
+    expect(updated.kind).toBe("updated");
+    if (updated.kind !== "updated") return;
+    expect(updated.activity.processors).toContain("OCI");
   });
 
   it("creates, exports and completes a data-subject request with audit trail", async () => {
@@ -176,6 +241,15 @@ suite("LGPD and retention", () => {
     if (completed.kind !== "updated") return;
     expect(completed.request.status).toBe("COMPLETED");
     expect(completed.request.completed_at).not.toBeNull();
+
+    const reopen = await updateDataSubjectRequest({
+      tenantId,
+      actorUserId: adminUserId,
+      requestId: created.request.id as string,
+      status: "IN_REVIEW",
+      resolution: "Tentativa inválida de reabertura.",
+    });
+    expect(reopen.kind).toBe("terminal_state");
 
     const audit = await admin.query<{ action: string }>(
       `SELECT action
