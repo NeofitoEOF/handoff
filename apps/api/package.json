@@ -18,7 +18,8 @@
     "@fastify/multipart": "^10.1.2",
     "exceljs": "^4.4.0",
     "@fastify/cookie": "^11.1.2",
-    "argon2": "^0.45.1"
+    "argon2": "^0.45.1",
+    "@aws-sdk/s3-request-presigner": "^3.922.0"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
