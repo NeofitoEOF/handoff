@@ -1,3 +1,4 @@
+-- migration-safety: allow-destructive reason=invalidate legacy password reset tokens that lack tenant context; tokens are short-lived credentials, not business records
 BEGIN;
 
 -- Reset tokens are short-lived and did not previously carry tenant context.
