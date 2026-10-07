@@ -75,6 +75,7 @@ CREATE TABLE request_assignment_history (
   new_assignee_id uuid NOT NULL REFERENCES users(id),
   changed_by uuid NOT NULL REFERENCES users(id),
   reason text NOT NULL CHECK (reason IN (
+    'INITIAL_ASSIGNMENT',
     'ABSENCE',
     'TERMINATION',
     'ROLE_CHANGE',
