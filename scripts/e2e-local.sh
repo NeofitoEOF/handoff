@@ -149,6 +149,11 @@ if [ "$audit_status" != "200" ]; then
   docker compose -f docker-compose.staging.yml exec -T postgres \
     psql -U handoff_admin -d handoff -P pager=off \
     -c "SELECT chain_seq, tenant_id, action, entity_type, left(hash,12) AS hash, left(prev_hash,12) AS prev_hash FROM audit_events WHERE tenant_id = '$tenant_id' ORDER BY chain_seq;" >&2 || true
+  echo "[e2e] audit rows as application role" >&2
+  docker compose -f docker-compose.staging.yml exec -T postgres \
+    psql "postgresql://handoff_app:handoff_app@127.0.0.1:5432/handoff" -P pager=off \
+    -c "BEGIN; SELECT set_config('app.tenant_id', '$tenant_id', true); SELECT chain_seq, tenant_id, action FROM audit_events ORDER BY chain_seq; COMMIT;" >&2 || true
+
   echo "[e2e] raw audit rows across tenants" >&2
   docker compose -f docker-compose.staging.yml exec -T postgres \
     psql -U handoff_admin -d handoff -P pager=off \
