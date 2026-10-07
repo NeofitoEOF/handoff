@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
+import { enqueueWebhookEvent } from "../integrations/public-api.service.js";
 
 async function canReview(
   client: import("../../db.js").DbClient,
@@ -188,6 +189,17 @@ export async function approveItem(input: {
           WHERE r.id = $1`,
         [input.requestId],
       );
+      await enqueueWebhookEvent(client, {
+        tenantId: input.tenantId,
+        eventType: "request.approved",
+        dedupeKey: `request:${input.requestId}:approved`,
+        payload: {
+          requestId: input.requestId,
+          status: "APPROVED",
+          approvedAt: new Date().toISOString(),
+        },
+      });
+
       if (creator.rows[0]) {
         await enqueueEmail(client, {
           tenantId: input.tenantId,
