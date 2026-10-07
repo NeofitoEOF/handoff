@@ -14,6 +14,7 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().default("Handoff <no-reply@localhost>"),
   WORKER_POLL_MS: z.coerce.number().int().min(5000).default(30000),
+  WORKER_PROCESSING_LEASE_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
   GOTENBERG_URL: z.string().url().default("http://localhost:3001"),
   OBJECT_STORAGE_ENDPOINT: z.string().url().default("http://localhost:9000"),
   OBJECT_STORAGE_REGION: z.string().default("us-east-1"),
