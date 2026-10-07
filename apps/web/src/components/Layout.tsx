@@ -15,6 +15,7 @@ export function Layout() {
           <NavLink to="/templates">Modelos</NavLink>
           <NavLink to="/notifications">Notificações</NavLink>
           <NavLink to="/audit">Auditoria</NavLink>
+          <NavLink to="/compliance">Compliance/LGPD</NavLink>
           <NavLink to="/admin">Administração</NavLink>
         </nav>
         <button className="link-button" onClick={() => void logout()}>Sair</button>
