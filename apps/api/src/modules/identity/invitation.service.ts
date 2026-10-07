@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { pool, withTenantTransaction } from "../../db.js";
 import { isSectorManager, isTenantAdmin } from "../../authorization.js";
 import { hashPassword } from "./identity.service.js";
+import { enqueueEmail } from "../notifications/notification.service.js";
+import { config } from "../../config.js";
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -57,6 +59,14 @@ export async function createInvitation(input: {
         expiresAt,
       ],
     );
+
+    await enqueueEmail(client, {
+      tenantId: input.tenantId,
+      recipientEmail: input.email,
+      subject: "[Handoff] Convite para acessar a plataforma",
+      bodyText: `Você foi convidado para o Handoff. Acesse ${config.APP_BASE_URL}/invite?token=${encodeURIComponent(token)} até ${expiresAt.toISOString()}.`,
+      dedupeKey: `invitation:${result.rows[0]!.id}`,
+    });
 
     await client.query(
       `INSERT INTO audit_events
