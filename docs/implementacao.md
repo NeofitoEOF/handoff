@@ -115,7 +115,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Caixa de entrada backend
 - ✅ Indicadores por setor backend
 - ✅ Login + refresh + MFA + recuperação Microsoft/Entra ID
-- ⏳ Outlook/Teams
+- ✅ Avisos no Outlook por e-mail transacional + Teams via Microsoft Workflows webhook cifrado
 
 ## Frontend
 
@@ -145,3 +145,23 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ Redação de Authorization/cookies nos logs
 - ✅ Banco separa usuário de migração e usuário de aplicação sem BYPASSRLS
 - ✅ ClamAV fail-closed em todos os caminhos de XLSX/evidência
+
+
+## Integrações Microsoft
+
+- ✅ Entra ID por tenant com Authorization Code + PKCE
+- ✅ State/nonce persistidos e uso único
+- ✅ ID token validado por JWKS, issuer, audience e tenant
+- ✅ Login Microsoft somente para usuário já vinculado ao tenant Handoff
+- ✅ Webhook Teams cifrado AES-256-GCM; URL nunca retornada pela API
+- ✅ Outbox Teams com idempotência e retry
+- ✅ Outlook atendido pelos e-mails transacionais existentes
+
+## Fase 2 — adoção
+
+- ✅ Campos calculados por item: soma, subtração, multiplicação e percentual
+- ✅ Total de coluna derivado no backend
+- ✅ Biblioteca de modelos
+- ✅ Criar modelo a partir de XLSX
+- ✅ Mapeamento de cabeçalhos do ERP salvo por modelo
+- ✅ Sugestão inicial de mapeamento por similaridade/sinônimos com confiança
