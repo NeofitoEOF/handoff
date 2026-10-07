@@ -129,7 +129,9 @@ jobs:
           helm package infra/helm/handoff --destination dist
 
       - name: Create checksums
-        run: sha256sum dist/release-manifest.json dist/*.tgz > dist/SHA256SUMS
+        run: |
+          cd dist
+          sha256sum release-manifest.json *.tgz > SHA256SUMS
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
