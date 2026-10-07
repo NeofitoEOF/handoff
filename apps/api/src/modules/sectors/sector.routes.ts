@@ -27,6 +27,16 @@ export async function sectorRoutes(app: FastifyInstance): Promise<void> {
     if (result.kind === "forbidden") {
       return reply.code(403).send({ message: "Somente Admin da Empresa pode criar setores." });
     }
+    if (result.kind === "plan_limit") {
+      return reply.code(409).send({
+        message:
+          result.reason === "billing_inactive"
+            ? "A assinatura da empresa não permite criar novos setores."
+            : "Limite de setores do plano atingido.",
+        ...(result.limit !== undefined ? { limit: result.limit } : {}),
+        ...(result.activeSectors !== undefined ? { activeSectors: result.activeSectors } : {}),
+      });
+    }
 
     return reply.code(201).send(result.sector);
   });
