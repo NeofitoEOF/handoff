@@ -138,3 +138,7 @@ tr:last-child td { border-bottom: 0; }
 .comment-row { border-left: 3px solid #d4dce7; padding: 9px 12px; background: #fafbfd; border-radius: 0 8px 8px 0; }
 .comment-row p { margin: 7px 0 0; }
 .comment-head { display: flex; justify-content: space-between; gap: 12px; }
+
+.separator { border: 0; border-top: 1px solid #e3e8ef; margin: 22px 0; }
+.integration-state { display: inline-flex; margin-bottom: 12px; padding: 5px 9px; border-radius: 999px; background: #edf1f5; color: #5b687c; font-size: 12px; font-weight: 800; }
+.integration-state.enabled { background: #e3f4e9; color: #24613b; }
