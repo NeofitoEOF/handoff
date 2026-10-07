@@ -5,6 +5,7 @@ import {
   createSector,
   deactivateSector,
   deactivateSectorMember,
+  listSectorMembers,
   listSectors,
 } from "./sector.service.js";
 
@@ -28,6 +29,19 @@ export async function sectorRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return reply.code(201).send(result.sector);
+  });
+
+  app.get("/v1/sectors/:id/members", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = sectorParams.parse(request.params);
+    const result = await listSectorMembers({
+      tenantId: request.user.tenantId,
+      actorUserId: request.user.sub,
+      sectorId: params.id,
+    });
+    if (result.kind === "forbidden") {
+      return reply.code(403).send({ message: "Sem acesso ao setor." });
+    }
+    return reply.send({ data: result.members });
   });
 
   app.post("/v1/sectors/:id/members", { preHandler: app.authenticate }, async (request, reply) => {
