@@ -121,8 +121,8 @@ export async function exportTenantData(input: {
       client.query(`SELECT * FROM template_versions ORDER BY template_id, version`),
       client.query(`SELECT * FROM requests ORDER BY created_at`),
       client.query(`SELECT * FROM request_items ORDER BY request_id, created_at`),
-      client.query(`SELECT id, tenant_id, request_id, item_id, uploaded_by, filename, mime_type, size_bytes, sha256, storage_key, status, created_at FROM attachments ORDER BY created_at`),
-      client.query(`SELECT id, tenant_id, request_id, uploaded_by, filename, storage_key, sha256, status, total_rows, accepted_rows, rejected_rows, errors, created_at, completed_at FROM imports ORDER BY created_at`),
+      client.query(`SELECT id, tenant_id, request_id, item_id, uploaded_by, uploaded_guest_link_id, filename, mime_type, size_bytes, sha256, storage_key, status, created_at FROM attachments ORDER BY created_at`),
+      client.query(`SELECT id, tenant_id, request_id, uploaded_by, uploaded_guest_link_id, filename, storage_key, sha256, status, total_rows, accepted_rows, rejected_rows, errors, created_at, completed_at FROM imports ORDER BY created_at`),
       client.query(`SELECT * FROM snapshots ORDER BY created_at`),
       client.query(`SELECT * FROM audit_events ORDER BY created_at, id`),
     ]);
