@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
-import { putObject } from "../../storage.js";
+import { getPresignedDownloadUrl, putObject } from "../../storage.js";
 import { scanBuffer } from "../../antivirus.js";
 
 export async function uploadEvidence(input: {
@@ -129,4 +129,75 @@ export async function uploadEvidence(input: {
 
     return { kind: "uploaded" as const, attachment: attachment.rows[0] };
   });
+}
+
+
+export async function listEvidence(input: {
+  tenantId: string;
+  requestId: string;
+  actorUserId: string;
+}) {
+  const rows = await withTenantTransaction(input.tenantId, async (client) => {
+    const access = await client.query(
+      `SELECT 1
+         FROM requests r
+         LEFT JOIN memberships mo
+           ON mo.sector_id = r.origin_sector_id AND mo.user_id = $2 AND mo.active = true
+         LEFT JOIN memberships md
+           ON md.sector_id = r.destination_sector_id AND md.user_id = $2 AND md.active = true
+         LEFT JOIN tenant_users tu
+           ON tu.tenant_id = r.tenant_id AND tu.user_id = $2
+          AND tu.active = true AND tu.role IN ('ADMIN', 'AUDITOR')
+        WHERE r.id = $1
+          AND (mo.id IS NOT NULL OR md.id IS NOT NULL OR tu.id IS NOT NULL)
+        LIMIT 1`,
+      [input.requestId, input.actorUserId],
+    );
+    if (access.rowCount !== 1) return null;
+
+    const result = await client.query<{
+      id: string;
+      item_id: string | null;
+      filename: string;
+      mime_type: string;
+      size_bytes: number;
+      sha256: string;
+      storage_key: string;
+      created_at: Date;
+      uploaded_by: string | null;
+      uploaded_guest_link_id: string | null;
+      uploader_name: string | null;
+      guest_email: string | null;
+    }>(
+      `SELECT a.id, a.item_id, a.filename, a.mime_type, a.size_bytes, a.sha256,
+              a.storage_key, a.created_at, a.uploaded_by, a.uploaded_guest_link_id,
+              u.name AS uploader_name, gl.email AS guest_email
+         FROM attachments a
+         LEFT JOIN users u ON u.id = a.uploaded_by
+         LEFT JOIN guest_links gl ON gl.id = a.uploaded_guest_link_id
+        WHERE a.request_id = $1
+          AND a.status = 'AVAILABLE'
+        ORDER BY a.created_at DESC`,
+      [input.requestId],
+    );
+    return result.rows;
+  });
+
+  if (!rows) return { kind: "not_found" as const };
+
+  const data = await Promise.all(
+    rows.map(async (row) => ({
+      id: row.id,
+      itemId: row.item_id,
+      filename: row.filename,
+      mimeType: row.mime_type,
+      sizeBytes: row.size_bytes,
+      sha256: row.sha256,
+      createdAt: row.created_at,
+      uploadedBy: row.guest_email ?? row.uploader_name ?? "Sistema",
+      downloadUrl: await getPresignedDownloadUrl(row.storage_key, 300),
+    })),
+  );
+
+  return { kind: "ok" as const, data };
 }
