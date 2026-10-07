@@ -70,7 +70,7 @@ Estas regras fecham as ambiguidades que normalmente aparecem quando um fluxo ent
 | --- | --- |
 | RN-OP-01 | **Dono da solicitação:** o setor de origem é dono do pedido; o setor de destino é dono da resposta. O responsável individual executa a tarefa, mas o SLA pertence ao setor, não à pessoa. |
 | RN-OP-02 | **Prazo e atribuição:** o prazo começa quando a solicitação é aberta para o setor de destino, mesmo que o gestor ainda não tenha atribuído um responsável. O painel separa atraso de atribuição do atraso de execução. |
-| RN-OP-03 | **Reatribuição:** Gestor do Setor pode trocar o responsável a qualquer momento antes do fechamento. O rascunho e anexos permanecem; o responsável anterior perde permissão de edição, mas continua na trilha. |
+| RN-OP-03 | **Reatribuição:** Gestor do Setor pode trocar o responsável enquanto a solicitação estiver aberta, em preenchimento, em correção ou aguardando submissão. A troca nunca reinicia o SLA, nunca apaga rascunho, comentários ou evidências e sempre registra responsável anterior, novo responsável, autor da troca, data/hora e motivo. O responsável anterior perde imediatamente a permissão de edição e submissão, mas continua identificado em tudo o que produziu. |
 | RN-OP-04 | **Substituição de gestor:** um setor pode ter mais de um Gestor. Não se pode deixar um setor ativo sem Gestor; ausência, férias ou desligamento não podem bloquear solicitações. |
 | RN-OP-05 | **Devolução não reinicia o histórico:** ao devolver, o revisor informa motivo obrigatório por item/campo. O prazo original continua registrado e o revisor define um novo prazo de correção; ambos aparecem no SLA. |
 | RN-OP-06 | **Aprovação por item:** cada item pode ficar Pendente, Enviado, Aprovado ou Devolvido. A solicitação só fica Aprovada quando todos os itens obrigatórios estiverem aprovados. Itens já aprovados ficam bloqueados para edição enquanto os devolvidos são corrigidos. |
@@ -86,6 +86,63 @@ Estas regras fecham as ambiguidades que normalmente aparecem quando um fluxo ent
 | RN-OP-16 | **Convidado:** convidado interno sem conta e terceiro externo são tratados como participantes de uma solicitação específica, nunca como membros do setor. A empresa pode proibir convidados externos por política. |
 | RN-OP-17 | **Expiração e escalonamento:** nenhuma aprovação pode ficar aguardando indefinidamente. Solicitações vencidas continuam visíveis e editáveis conforme permissão, mas entram em atraso e disparam escalonamento ao Gestor; o prazo não some nem é renovado automaticamente. |
 | RN-OP-18 | **Responsabilidade registrada:** o fechamento distingue quem forneceu a informação, quem alterou, quem submeteu e quem aprovou. Aprovação confirma a revisão do conteúdo aprovado; não transfere a autoria do dado para o aprovador. |
+
+### Reatribuição de responsável — regra detalhada
+
+A reatribuição existe para impedir que férias, ausência, desligamento, mudança de função ou erro de atribuição deixem a solicitação parada. Ela **transfere a responsabilidade operacional daqui para frente**, mas não reescreve o passado.
+
+**Quem pode reatribuir**
+- Gestor do setor de destino pode trocar o responsável enquanto houver trabalho pendente no setor.
+- Admin da Empresa só pode intervir em contingência, quando não existir Gestor ativo no setor; a intervenção fica destacada na auditoria.
+- O próprio responsável pode solicitar a troca, mas não efetivá-la sozinho.
+
+**O que é preservado**
+- prazo original e eventuais prazos de correção;
+- rascunho já preenchido;
+- arquivos e evidências anexados;
+- comentários;
+- validações já executadas;
+- itens já aprovados ou devolvidos;
+- autoria de cada alteração anterior.
+
+**O que muda imediatamente**
+- o novo responsável recebe permissão de editar os itens ainda editáveis e de submeter a resposta;
+- o responsável anterior perde permissão de editar/submeter, salvo se continuar autorizado por outro papel independente;
+- o novo responsável recebe notificação com contexto, prazo atual e pendências;
+- a caixa de entrada do gestor e do novo responsável é atualizada sem gerar uma nova solicitação.
+
+**SLA e indicadores**
+- reatribuir **não reinicia nem estende automaticamente o prazo**;
+- o sistema registra separadamente tempo sem responsável, tempo com cada responsável e tempo total do setor;
+- se a troca ocorrer depois do vencimento, a solicitação continua atrasada;
+- qualquer extensão de prazo é uma ação própria, separada da reatribuição, com motivo e auditoria.
+
+**Motivo obrigatório**
+Toda reatribuição exige um motivo padronizado, com comentário opcional: Férias/Ausência, Desligamento, Mudança de função, Carga de trabalho, Atribuição incorreta, Escalonamento ou Outro.
+
+**Casos especiais**
+- Se o responsável for desativado ou removido do setor com solicitações pendentes, essas solicitações entram em **Aguardando reatribuição** e o Gestor é notificado; elas não são automaticamente transferidas para uma pessoa arbitrária.
+- Se houver vários itens e somente parte deles tiver sido produzida pelo responsável anterior, a autoria permanece por item/campo.
+- Reatribuição durante revisão não troca o aprovador automaticamente; responsável pelo preenchimento e responsável pela aprovação são funções independentes.
+- Reatribuição não permite burlar maker-checker: quem preencheu um item anteriormente continua impedido de aprovar aquele mesmo item mesmo após deixar de ser o responsável atual.
+
+**Exemplo**
+
+~~~text
+Solicitação: Provisões 10/2026
+Prazo original: 05/11
+
+03/11  João inicia o preenchimento
+04/11  João anexa evidência e salva rascunho
+04/11  Gestor reatribui para Maria — motivo: Férias/Ausência
+
+Resultado:
+- Maria continua do ponto onde João parou
+- prazo continua 05/11
+- João não pode mais editar/submeter
+- dados preenchidos por João continuam atribuídos a João na trilha
+- Maria responde pelas alterações feitas após a reatribuição
+~~~
 
 ### Matriz de autoridade da solicitação
 
@@ -137,7 +194,7 @@ São 29 requisitos distribuídos em fases: Fase 1 (piloto, semanas 1–6), Fase 
 | RF-29 | Cobrança | Cobrança por setor habilitado; usuários do setor e convidados por link não pagam | 3 |
 | RF-30 | Coletas | Criar uma coleta para distribuir o mesmo modelo/competência a vários setores, gerando solicitações-filhas independentes e visão consolidada | 2 |
 | RF-31 | Retificação | Corrigir conteúdo já fechado somente por nova retificação vinculada ao fechamento original; nunca reabrir ou sobrescrever snapshot aprovado | 1 |
-| RF-32 | Atribuição | Gestor pode reatribuir responsável preservando rascunho, evidências e trilha; SLA permanece do setor | 1 |
+| RF-32 | Atribuição | Gestor pode reatribuir responsável preservando rascunho, evidências, autoria e trilha; motivo é obrigatório, o SLA não reinicia, o usuário anterior perde edição/submissão e desligamentos deixam a solicitação em Aguardando reatribuição até decisão do Gestor | 1 |
 | RF-33 | Escalonamento | Atraso sem resposta ou sem atribuição gera escalonamento ao Gestor; prazo original e novos prazos de correção permanecem visíveis | 1 |
 
 Ciclo de status (RF-09): a devolução volta somente os itens rejeitados para correção; itens aprovados ficam bloqueados. A solicitação só chega a Aprovada quando todos os itens obrigatórios estiverem aprovados. Depois de Fechada, qualquer correção é feita por Retificação (RF-31), nunca por reabertura.
