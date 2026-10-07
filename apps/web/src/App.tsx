@@ -14,6 +14,7 @@ import { RequestPage } from "./pages/RequestPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SectorsPage } from "./pages/SectorsPage";
 import { SectorDetailPage } from "./pages/SectorDetailPage";
+import { TemplateDetailPage } from "./pages/TemplateDetailPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
           <Route path="/sectors" element={<SectorsPage />} />
           <Route path="/sectors/:id" element={<SectorDetailPage />} />
           <Route path="/templates" element={<TemplatesPage />} />
+          <Route path="/templates/:id" element={<TemplateDetailPage />} />
           <Route path="/audit" element={<AuditPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
