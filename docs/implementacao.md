@@ -14,8 +14,8 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - ✅ JWT básico com `sub` e `tenantId`
 - ✅ Transações com contexto RLS via `SET LOCAL app.tenant_id`
 - ✅ CI com typecheck e testes
-- ⏳ Refresh token rotativo
-- ⏳ Login/senha + Argon2id
+- ✅ Refresh token rotativo
+- ✅ Login/senha + Argon2id
 - ⏳ MFA/TOTP
 - ⏳ Recuperação de senha
 
