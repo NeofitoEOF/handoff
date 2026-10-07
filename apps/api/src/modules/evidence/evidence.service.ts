@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
 import { putObject } from "../../storage.js";
+import { scanBuffer } from "../../antivirus.js";
 
 export async function uploadEvidence(input: {
   tenantId: string;
@@ -13,6 +14,14 @@ export async function uploadEvidence(input: {
 }) {
   if (input.buffer.byteLength > 20 * 1024 * 1024) {
     return { kind: "file_too_large" as const };
+  }
+
+  const antivirus = await scanBuffer(input.buffer);
+  if (antivirus.status === "INFECTED") {
+    return { kind: "malware_detected" as const, signature: antivirus.signature };
+  }
+  if (antivirus.status === "UNAVAILABLE") {
+    return { kind: "antivirus_unavailable" as const, error: antivirus.error };
   }
 
   return withTenantTransaction(input.tenantId, async (client) => {
