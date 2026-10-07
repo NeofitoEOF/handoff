@@ -366,10 +366,10 @@ suite("business workflow acceptance", () => {
       tenantId,
       requestId,
       actorUserId: originApproverId,
-      dueAt: newDueAt,
+      newDueAt,
       reason: "Ajuste acordado com o setor de destino.",
     });
-    expect(changed.kind).toBe("updated");
+    expect(changed.kind).toBe("changed");
 
     const cancelled = await cancelRequest({
       tenantId,
