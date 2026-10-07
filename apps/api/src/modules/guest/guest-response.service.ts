@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../db.js";
 import { withGuestSession } from "./guest.service.js";
+import { applyItemCalculations } from "../templates/calculations.js";
 
 export async function getGuestRequest(sessionToken: string) {
   return withGuestSession(sessionToken, async (context) => {
@@ -59,6 +60,21 @@ export async function saveGuestItem(input: {
         );
       }
 
+      const schemaResult = await client.query<{
+        schema_json: { fields?: Array<{ key: string; calculation?: unknown }> } | null;
+      }>(
+        `SELECT tv.schema_json
+           FROM requests r
+           LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+          WHERE r.id = $1
+          LIMIT 1`,
+        [context.requestId],
+      );
+      const guestCalculatedData = applyItemCalculations(
+        input.data,
+        (schemaResult.rows[0]?.schema_json?.fields ?? []) as any,
+      );
+
       const result = await client.query(
         `INSERT INTO request_items
           (tenant_id, request_id, item_key, data, status, last_edited_guest_link_id)
@@ -79,7 +95,7 @@ export async function saveGuestItem(input: {
           context.tenantId,
           context.requestId,
           input.itemKey,
-          JSON.stringify(input.data),
+          JSON.stringify(guestCalculatedData),
           context.guestLinkId,
         ],
       );
