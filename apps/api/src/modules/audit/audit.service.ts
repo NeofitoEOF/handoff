@@ -1,4 +1,9 @@
+import crypto from "node:crypto";
 import { withTenantTransaction } from "../../db.js";
+import {
+  getObjectBuffer,
+  getPresignedDownloadUrlForBucket,
+} from "../../storage.js";
 
 async function canReadRequest(
   client: import("../../db.js").DbClient,
@@ -195,4 +200,175 @@ export async function verifyTenantAuditChain(input: {
       lastHash: previousHash,
     };
   });
+}
+
+
+async function canManageTenantAudit(
+  client: import("../../db.js").DbClient,
+  tenantId: string,
+  userId: string,
+): Promise<boolean> {
+  const role = await client.query(
+    `SELECT 1
+       FROM tenant_users
+      WHERE tenant_id = $1
+        AND user_id = $2
+        AND role IN ('ADMIN', 'AUDITOR')
+        AND active = true
+      LIMIT 1`,
+    [tenantId, userId],
+  );
+  return role.rowCount === 1;
+}
+
+export async function listAuditAnchors(input: {
+  tenantId: string;
+  userId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await canManageTenantAudit(client, input.tenantId, input.userId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const result = await client.query<{
+      id: string;
+      anchor_date: string;
+      chain_seq: string;
+      chain_hash: string;
+      manifest_sha256: string;
+      storage_bucket: string;
+      storage_key: string;
+      created_at: Date;
+      event_hash: string | null;
+    }>(
+      `SELECT aa.id,
+              aa.anchor_date::text,
+              aa.chain_seq::text,
+              aa.chain_hash,
+              aa.manifest_sha256,
+              aa.storage_bucket,
+              aa.storage_key,
+              aa.created_at,
+              ae.hash AS event_hash
+         FROM audit_anchors aa
+         LEFT JOIN audit_events ae
+           ON ae.chain_seq = aa.chain_seq
+        ORDER BY aa.anchor_date DESC`,
+    );
+
+    return {
+      kind: "ok" as const,
+      data: result.rows.map((row) => ({
+        id: row.id,
+        anchorDate: row.anchor_date,
+        chainSeq: Number(row.chain_seq),
+        chainHash: row.chain_hash,
+        manifestSha256: row.manifest_sha256,
+        storageBucket: row.storage_bucket,
+        storageKey: row.storage_key,
+        createdAt: row.created_at,
+        chainMatches: row.event_hash === row.chain_hash,
+      })),
+    };
+  });
+}
+
+export async function verifyAuditAnchors(input: {
+  tenantId: string;
+  userId: string;
+}) {
+  const listed = await listAuditAnchors(input);
+  if (listed.kind !== "ok") return listed;
+
+  const checks = [];
+
+  for (const anchor of listed.data) {
+    try {
+      const body = await getObjectBuffer(anchor.storageBucket, anchor.storageKey);
+      const calculatedManifestSha256 = crypto
+        .createHash("sha256")
+        .update(body)
+        .digest("hex");
+
+      let manifest: Record<string, unknown> | null = null;
+      try {
+        manifest = JSON.parse(body.toString("utf8")) as Record<string, unknown>;
+      } catch {
+        manifest = null;
+      }
+
+      const manifestMatches =
+        calculatedManifestSha256 === anchor.manifestSha256 &&
+        manifest !== null &&
+        manifest.tenantId === input.tenantId &&
+        manifest.anchorDate === anchor.anchorDate &&
+        Number(manifest.chainSeq) === anchor.chainSeq &&
+        manifest.chainHash === anchor.chainHash;
+
+      checks.push({
+        ...anchor,
+        manifestMatches,
+        calculatedManifestSha256,
+        storageReachable: true,
+        valid: anchor.chainMatches && manifestMatches,
+      });
+    } catch (error) {
+      checks.push({
+        ...anchor,
+        manifestMatches: false,
+        calculatedManifestSha256: null,
+        storageReachable: false,
+        storageError: error instanceof Error ? error.message : String(error),
+        valid: false,
+      });
+    }
+  }
+
+  return {
+    kind: "ok" as const,
+    valid: checks.every((check) => check.valid),
+    anchors: checks,
+  };
+}
+
+export async function getAuditAnchorDownload(input: {
+  tenantId: string;
+  userId: string;
+  anchorId: string;
+}) {
+  const anchor = await withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await canManageTenantAudit(client, input.tenantId, input.userId))) {
+      return { kind: "forbidden" as const };
+    }
+
+    const result = await client.query<{
+      storage_bucket: string;
+      storage_key: string;
+      anchor_date: string;
+    }>(
+      `SELECT storage_bucket, storage_key, anchor_date::text
+         FROM audit_anchors
+        WHERE id = $1
+        LIMIT 1`,
+      [input.anchorId],
+    );
+
+    if (!result.rows[0]) return { kind: "not_found" as const };
+    return { kind: "ok" as const, anchor: result.rows[0] };
+  });
+
+  if (anchor.kind !== "ok") return anchor;
+
+  const url = await getPresignedDownloadUrlForBucket(
+    anchor.anchor.storage_bucket,
+    anchor.anchor.storage_key,
+    300,
+  );
+
+  return {
+    kind: "ok" as const,
+    url,
+    expiresIn: 300,
+    anchorDate: anchor.anchor.anchor_date,
+  };
 }
