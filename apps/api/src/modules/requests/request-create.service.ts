@@ -57,6 +57,23 @@ export async function createRequest(input: {
       }
     }
 
+    if (input.templateVersionId) {
+      const template = await client.query(
+        `SELECT 1
+           FROM template_versions tv
+           JOIN templates t ON t.id = tv.template_id
+          WHERE tv.id = $1
+            AND tv.status = 'PUBLISHED'
+            AND t.sector_id = $2
+            AND t.active = true
+          LIMIT 1`,
+        [input.templateVersionId, input.originSectorId],
+      );
+      if (template.rowCount !== 1) {
+        return { kind: "invalid_template" as const };
+      }
+    }
+
     const duplicate = input.competence
       ? await client.query(
           `SELECT 1
