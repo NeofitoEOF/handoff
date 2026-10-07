@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   apply:
-    if: ${{ inputs.confirm == 'APPLY' }}
+    if: ${{ inputs.confirm == 'APPLY' && vars.OCI_TERRAFORM_REMOTE_STATE_READY == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     defaults:
