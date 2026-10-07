@@ -17,5 +17,5 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --filter @handoff/api typecheck
-      - run: pnpm --filter @handoff/api test
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
