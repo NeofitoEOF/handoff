@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { reassignRequest } from "./request.service.js";
+import { getRequestDetail } from "./request-detail.service.js";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
@@ -21,6 +22,27 @@ const bodySchema = z.object({
 });
 
 export async function requestRoutes(app: FastifyInstance): Promise<void> {
+  app.get(
+    "/v1/requests/:id",
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const params = paramsSchema.parse(request.params);
+      const result = await getRequestDetail({
+        tenantId: request.user.tenantId,
+        requestId: params.id,
+        actorUserId: request.user.sub,
+      });
+
+      if (result.kind === "not_found") {
+        return reply.code(404).send({ message: "Solicitação não encontrada." });
+      }
+
+      return reply.send({
+        request: result.request,
+        permissions: result.permissions,
+      });
+    },
+  );
   app.post(
     "/v1/requests/:id/reassign",
     { preHandler: app.authenticate },
