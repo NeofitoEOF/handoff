@@ -18,6 +18,7 @@ const envSchema = z.object({
   MFA_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
   PLATFORM_ADMIN_KEY: z.string().min(32),
   APP_BASE_URL: z.string().url().default("http://localhost:5173"),
+  WEB_ORIGINS: z.string().default("http://localhost:5173"),
   CLAMAV_ENABLED: envBoolean.default("true"),
   CLAMAV_HOST: z.string().default("localhost"),
   CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
