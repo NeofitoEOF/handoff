@@ -93,4 +93,32 @@ suite("audit hash chain", () => {
     expect(rows.rows[0]!.chain_seq).toBe("1");
     expect(rows.rows[0]!.hash).toMatch(/^[a-f0-9]{64}$/);
   });
+
+  it("keeps numeric order beyond nine events", async () => {
+    await app.query("BEGIN");
+    await app.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+
+    for (let index = 0; index < 12; index += 1) {
+      await app.query(
+        `INSERT INTO audit_events
+          (tenant_id, action, entity_type, entity_id, after_data)
+         VALUES ($1, $2, 'test', gen_random_uuid(), jsonb_build_object('index', $3::int))`,
+        [tenantId, `TEST_SEQUENCE_${index + 1}`, index + 1],
+      );
+    }
+
+    const ordered = await app.query<{ chain_seq: string }>(
+      `SELECT chain_seq::text
+         FROM audit_events
+        WHERE tenant_id = $1
+        ORDER BY audit_events.chain_seq ASC`,
+      [tenantId],
+    );
+
+    expect(ordered.rows.map((row) => Number(row.chain_seq))).toEqual(
+      Array.from({ length: 13 }, (_, index) => index + 1),
+    );
+
+    await app.query("ROLLBACK");
+  });
 });
