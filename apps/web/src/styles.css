@@ -122,3 +122,11 @@ tr:last-child td { border-bottom: 0; }
   .library-grid { grid-template-columns: 1fr; }
   .notification-head { flex-direction: column; gap: 4px; }
 }
+
+.version-list { display: grid; gap: 8px; }
+.version-button { display: flex; justify-content: space-between; gap: 12px; width: 100%; background: #f3f6fa; color: #26364c; border: 1px solid transparent; }
+.version-button.active { border-color: #6e8db6; background: #e8eff8; }
+.schema-editor { min-height: 430px; tab-size: 2; }
+.compact-header { margin-bottom: 12px; }
+.compact-stack { margin-top: 14px; }
+.full-width { width: 100%; margin-top: 12px; }
