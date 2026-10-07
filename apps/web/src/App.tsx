@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminPage } from "./pages/AdminPage";
+import { CompliancePage } from "./pages/CompliancePage";
 import { AuditPage } from "./pages/AuditPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { GuestPage } from "./pages/GuestPage";
@@ -40,6 +41,7 @@ export function App() {
           <Route path="/templates/:id" element={<TemplateDetailPage />} />
           <Route path="/audit" element={<AuditPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/compliance" element={<CompliancePage />} />
         </Route>
       </Route>
 
