@@ -142,3 +142,11 @@ tr:last-child td { border-bottom: 0; }
 .separator { border: 0; border-top: 1px solid #e3e8ef; margin: 22px 0; }
 .integration-state { display: inline-flex; margin-bottom: 12px; padding: 5px 9px; border-radius: 999px; background: #edf1f5; color: #5b687c; font-size: 12px; font-weight: 800; }
 .integration-state.enabled { background: #e3f4e9; color: #24613b; }
+
+.mapping-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; margin-bottom: 14px; }
+.mapping-row small { font-weight: 500; }
+.auth-divider { display: flex; align-items: center; gap: 10px; color: #8a96a8; font-size: 12px; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; background: #dfe5ec; flex: 1; }
+@media (max-width: 700px) {
+  .mapping-grid { grid-template-columns: 1fr; }
+}
