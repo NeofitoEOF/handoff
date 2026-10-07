@@ -34,6 +34,7 @@ import { microsoftRoutes } from "./modules/integrations/microsoft.routes.js";
 import { importMappingRoutes } from "./modules/imports/import-mapping.routes.js";
 import { billingRoutes } from "./modules/billing/billing.routes.js";
 import { publicApiRoutes } from "./modules/integrations/public-api.routes.js";
+import { deadLetterRoutes } from "./modules/operations/dead-letter.routes.js";
 import { registerMetrics } from "./metrics.js";
 
 export async function buildApp() {
@@ -105,6 +106,7 @@ export async function buildApp() {
   await app.register(importMappingRoutes);
   await app.register(billingRoutes);
   await app.register(publicApiRoutes);
+  await app.register(deadLetterRoutes);
   await app.register(sectorRoutes);
   await app.register(requestCreateRoutes);
   await app.register(requestAssignmentRoutes);
