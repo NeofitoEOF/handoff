@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/api apps/api
 RUN pnpm --filter @handoff/api build
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
