@@ -55,7 +55,7 @@ jobs:
 
       - name: Build and push API
         id: api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/api/Dockerfile
@@ -74,7 +74,7 @@ jobs:
 
       - name: Build and push worker
         id: worker
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/worker/Dockerfile
@@ -93,7 +93,7 @@ jobs:
 
       - name: Build and push web
         id: web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/web/Dockerfile
