@@ -74,7 +74,7 @@ jobs:
       - run: terraform apply -auto-approve tfplan
       - name: Export outputs
         run: terraform output -json > outputs.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: terraform-outputs-${{ inputs.environment }}
           path: infra/terraform/oci/outputs.json

@@ -44,7 +44,7 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
 
       - name: Upload generated lockfile
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pnpm-lock-${{ github.sha }}
           path: pnpm-lock.yaml
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: local-e2e-logs
           path: local-e2e.log
