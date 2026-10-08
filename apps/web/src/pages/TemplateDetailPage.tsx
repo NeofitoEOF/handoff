@@ -187,12 +187,20 @@ export function TemplateDetailPage() {
               <p className="muted">
                 {selected.status === "PUBLISHED"
                   ? "Publicado e imutável."
-                  : "Revise os campos antes de publicar."}
+                  : "Revise os campos antes de publicar. Campos calculados, visibilidade por papel e alçada ficam no JSON."}
               </p>
             </div>
             <span className={`status status-${selected.status.toLowerCase()}`}>{selected.status}</span>
           </div>
 
+          <pre className="schema-help">{`{
+  "fields": [
+    { "key": "valor", "label": "Valor", "type": "MONEY", "required": true },
+    { "key": "salario", "label": "Salário", "type": "MONEY", "visibleTo": ["APPROVER", "MANAGER"] },
+    { "key": "total", "label": "Total", "type": "MONEY", "calculation": { "op": "COLUMN_SUM", "field": "valor" } }
+  ],
+  "approvalPolicy": { "fieldKey": "valor", "threshold": 20000 }
+}`}</pre>
           <label className="field">
             <span>JSON do modelo</span>
             <textarea

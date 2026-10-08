@@ -1,6 +1,7 @@
 import { withTenantTransaction } from "../../db.js";
 import { createInAppNotification, enqueueEmail, enqueueTeams } from "../notifications/notification.service.js";
 import { enqueueWebhookEvent } from "../integrations/public-api.service.js";
+import { readApprovalPolicy, requiredApprovals } from "../templates/field-access.js";
 
 async function canReview(
   client: import("../../db.js").DbClient,
@@ -133,10 +134,12 @@ export async function approveItem(input: {
     const itemResult = await client.query<{
       id: string;
       status: string;
+      data: Record<string, unknown>;
       submitted_by: string | null;
+      submitted_at: Date | null;
       submitted_guest_link_id: string | null;
     }>(
-      `SELECT id, status, submitted_by, submitted_guest_link_id
+      `SELECT id, status, data, submitted_by, submitted_at, submitted_guest_link_id
          FROM request_items
         WHERE id = $1 AND request_id = $2
         FOR UPDATE`,
@@ -147,6 +150,77 @@ export async function approveItem(input: {
     if (!item) return { kind: "not_found" as const };
     if (item.status !== "SUBMITTED") return { kind: "invalid_state" as const, status: item.status };
     if (item.submitted_by === input.actorUserId) return { kind: "maker_checker" as const };
+
+    const schemaResult = await client.query<{ schema_json: unknown; origin_sector_id: string }>(
+      `SELECT tv.schema_json, r.origin_sector_id
+         FROM requests r
+         LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+        WHERE r.id = $1`,
+      [input.requestId],
+    );
+    const required = requiredApprovals(readApprovalPolicy(schemaResult.rows[0]?.schema_json), item.data);
+    const prior = await client.query<{ approved_by: string }>(
+      `SELECT approved_by FROM request_item_approvals WHERE request_item_id = $1`,
+      [input.itemId],
+    );
+    if (prior.rows.some((row) => row.approved_by === input.actorUserId)) {
+      return { kind: "already_approved" as const, required };
+    }
+
+    await client.query(
+      `INSERT INTO request_item_approvals (tenant_id, request_item_id, approved_by)
+       VALUES ($1, $2, $3)`,
+      [input.tenantId, input.itemId, input.actorUserId],
+    );
+
+    if (prior.rows.length + 1 < required) {
+      const peers = await client.query<{ user_id: string; email: string }>(
+        `SELECT m.user_id, u.email
+           FROM memberships m
+           JOIN users u ON u.id = m.user_id AND u.active = true
+          WHERE m.sector_id = $1
+            AND m.active = true
+            AND m.role IN ('MANAGER', 'APPROVER')
+            AND m.user_id <> $2
+            AND ($3::uuid IS NULL OR m.user_id <> $3)`,
+        [schemaResult.rows[0]?.origin_sector_id, input.actorUserId, item.submitted_by],
+      );
+      for (const peer of peers.rows) {
+        await enqueueEmail(client, {
+          tenantId: input.tenantId,
+          requestId: input.requestId,
+          recipientEmail: peer.email,
+          subject: "[Handoff] Segunda aprovação necessária",
+          bodyText: "Um item ultrapassou a alçada e precisa de outro aprovador.",
+          dedupeKey: `request:${input.requestId}:item:${input.itemId}:second-approval:${peer.user_id}:${item.submitted_at?.toISOString() ?? "open"}`,
+        });
+        await createInAppNotification(client, {
+          tenantId: input.tenantId,
+          userId: peer.user_id,
+          requestId: input.requestId,
+          type: "SECOND_APPROVAL",
+          title: "Segunda aprovação necessária",
+          message: "Um item ultrapassou a alçada e precisa de outro aprovador.",
+        });
+      }
+      await client.query(
+        `INSERT INTO audit_events
+          (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+         VALUES ($1, $2, 'REQUEST_ITEM_APPROVAL_PENDING', 'request_item', $3, $4::jsonb)`,
+        [
+          input.tenantId,
+          input.actorUserId,
+          input.itemId,
+          JSON.stringify({ approvals: prior.rows.length + 1, required }),
+        ],
+      );
+      return {
+        kind: "pending_second" as const,
+        approvals: prior.rows.length + 1,
+        required,
+        requestStatus: "IN_REVIEW",
+      };
+    }
 
     await client.query(
       `UPDATE request_items
@@ -269,6 +343,11 @@ export async function returnItem(input: {
     if (!item) return { kind: "not_found" as const };
     if (item.status !== "SUBMITTED") return { kind: "invalid_state" as const, status: item.status };
     if (item.submitted_by === input.actorUserId) return { kind: "maker_checker" as const };
+
+    await client.query(
+      `DELETE FROM request_item_approvals WHERE request_item_id = $1`,
+      [input.itemId],
+    );
 
     await client.query(
       `UPDATE request_items

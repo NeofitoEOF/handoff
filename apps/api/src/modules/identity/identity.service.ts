@@ -180,6 +180,42 @@ export async function rotateRefreshSession(input: {
   });
 }
 
+export async function getSessionProfile(input: { tenantId: string; userId: string }) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const user = await client.query<{ name: string; email: string; role: "ADMIN" | "AUDITOR" | "USER" }>(
+      `SELECT u.name, u.email, tu.role
+         FROM tenant_users tu
+         JOIN users u ON u.id = tu.user_id
+        WHERE tu.user_id = $1
+          AND tu.active = true
+        LIMIT 1`,
+      [input.userId],
+    );
+    const profile = user.rows[0];
+    if (!profile) return null;
+    const memberships = await client.query<{
+      sector_id: string;
+      sector_name: string;
+      role: "MANAGER" | "APPROVER" | "MEMBER";
+    }>(
+      `SELECT m.sector_id, s.name AS sector_name, m.role
+         FROM memberships m
+         JOIN sectors s ON s.id = m.sector_id
+        WHERE m.user_id = $1
+          AND m.active = true
+          AND s.active = true
+        ORDER BY s.name`,
+      [input.userId],
+    );
+    return {
+      name: profile.name,
+      email: profile.email,
+      tenantRole: profile.role,
+      memberships: memberships.rows,
+    };
+  });
+}
+
 export async function revokeRefreshToken(token: string): Promise<void> {
   const tenantId = tenantIdFromScopedToken(token);
   if (!tenantId) return;

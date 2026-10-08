@@ -1,5 +1,7 @@
 import ExcelJS from "exceljs";
 import { withTenantTransaction } from "../../db.js";
+import { readSchemaFields, redactData } from "../templates/field-access.js";
+import { loadFieldViewer } from "../templates/field-viewer.js";
 
 async function loadExportData(input: {
   tenantId: string;
@@ -12,9 +14,11 @@ async function loadExportData(input: {
       competence: string | null;
       origin_sector_id: string;
       destination_sector_id: string;
+      schema_json: unknown;
     }>(
-      `SELECT r.title, r.competence, r.origin_sector_id, r.destination_sector_id
+      `SELECT r.title, r.competence, r.origin_sector_id, r.destination_sector_id, tv.schema_json
          FROM requests r
+         LEFT JOIN template_versions tv ON tv.id = r.template_version_id
          LEFT JOIN memberships mo
            ON mo.sector_id = r.origin_sector_id AND mo.user_id = $2 AND mo.active = true
          LEFT JOIN memberships md
@@ -43,15 +47,24 @@ async function loadExportData(input: {
       [input.requestId],
     );
 
+    const schemaFields = readSchemaFields(request.schema_json);
+    const viewer = await loadFieldViewer(client, input.actorUserId, [
+      request.origin_sector_id,
+      request.destination_sector_id,
+    ]);
+    const visibleItems = items.rows.map((item) => ({
+      ...item,
+      data: redactData(item.data ?? {}, schemaFields, viewer),
+    }));
     const fields = new Set<string>();
-    for (const item of items.rows) {
+    for (const item of visibleItems) {
       for (const key of Object.keys(item.data ?? {})) fields.add(key);
     }
 
     return {
       kind: "ok" as const,
       request,
-      items: items.rows,
+      items: visibleItems,
       fields: [...fields],
     };
   });

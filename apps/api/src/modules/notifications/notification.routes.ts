@@ -1,8 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { listNotifications, markNotificationRead } from "./notification.service.js";
+import { countUnreadNotifications, listNotifications, markNotificationRead } from "./notification.service.js";
 
 export async function notificationRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/v1/notifications/unread-count", { preHandler: app.authenticate }, async (request) => {
+    const total = await countUnreadNotifications({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+    return { total };
+  });
+
   app.get("/v1/notifications", { preHandler: app.authenticate }, async (request) => {
     const query = z.object({
       unreadOnly: z.coerce.boolean().default(false),

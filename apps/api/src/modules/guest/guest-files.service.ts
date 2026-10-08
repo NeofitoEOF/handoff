@@ -6,6 +6,9 @@ import { validateXlsxBuffer, type XlsxTemplateField } from "../imports/xlsx-vali
 import { loadDefaultImportMapping } from "../imports/import-mapping.service.js";
 import { withGuestSession } from "./guest.service.js";
 import { checkTenantStorageCapacity } from "../billing/billing.service.js";
+import { applyItemCalculations } from "../templates/calculations.js";
+import { fieldsForEntry, readSchemaFields } from "../templates/field-access.js";
+import { guestFieldViewer } from "../templates/field-viewer.js";
 
 export async function guestValidateXlsx(input: {
   sessionToken: string;
@@ -50,9 +53,10 @@ export async function guestValidateXlsx(input: {
     }
     if (!request.schema_json) return { kind: "missing_template" as const };
 
+    const allFields = readSchemaFields(request.schema_json);
     const validation = await validateXlsxBuffer(
       input.buffer,
-      request.schema_json,
+      { fields: fieldsForEntry(allFields, guestFieldViewer) as XlsxTemplateField[] },
       request.columnMapping,
     );
     if (validation.kind !== "validated") return validation;
@@ -133,7 +137,25 @@ export async function guestConfirmXlsx(input: {
       if (current.status === "CONFIRMED") return { kind: "already_confirmed" as const };
       if (current.status !== "VALIDATED") return { kind: "invalid_state" as const, status: current.status };
 
+      const schemaRow = await client.query<{ schema_json: unknown }>(
+        `SELECT tv.schema_json
+           FROM requests r
+           LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+          WHERE r.id = $1`,
+        [context.requestId],
+      );
+      const fields = readSchemaFields(schemaRow.rows[0]?.schema_json);
+
       for (const item of current.staged_items) {
+        const existing = await client.query<{ data: Record<string, unknown> }>(
+          `SELECT data FROM request_items
+            WHERE tenant_id = $1 AND request_id = $2 AND item_key = $3`,
+          [context.tenantId, context.requestId, item.itemKey],
+        );
+        const merged = applyItemCalculations(
+          { ...(existing.rows[0]?.data ?? {}), ...item.data },
+          fields,
+        );
         await client.query(
           `INSERT INTO request_items
             (tenant_id, request_id, item_key, data, status, last_edited_by, last_edited_guest_link_id)
@@ -150,7 +172,7 @@ export async function guestConfirmXlsx(input: {
             context.tenantId,
             context.requestId,
             item.itemKey,
-            JSON.stringify(item.data),
+            JSON.stringify(merged),
             context.guestLinkId,
           ],
         );

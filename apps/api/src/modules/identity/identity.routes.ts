@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   authenticatePassword,
   createRefreshSession,
+  getSessionProfile,
   revokeRefreshToken,
   rotateRefreshSession,
 } from "./identity.service.js";
@@ -98,6 +99,15 @@ export async function identityRoutes(app: FastifyInstance): Promise<void> {
 
     reply.setCookie(refreshCookieName, rotated.token, refreshCookieOptions(rotated.expiresAt));
     return reply.send({ accessToken, expiresIn: 900 });
+  });
+
+  app.get("/v1/session", { preHandler: app.authenticate }, async (request, reply) => {
+    const profile = await getSessionProfile({
+      tenantId: request.user.tenantId,
+      userId: request.user.sub,
+    });
+    if (!profile) return reply.code(404).send({ message: "Sessão sem vínculo ativo na empresa." });
+    return reply.send(profile);
   });
 
   app.post("/v1/auth/logout", async (request, reply) => {

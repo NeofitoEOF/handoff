@@ -15,7 +15,7 @@ export type CalculationDefinition =
 
 export type CalculatedFieldDefinition = {
   key: string;
-  calculation?: CalculationDefinition;
+  calculation?: CalculationDefinition | undefined;
 };
 
 function numeric(value: unknown): number {

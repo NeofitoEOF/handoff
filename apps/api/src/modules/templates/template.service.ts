@@ -11,12 +11,15 @@ export type TemplateSchema = {
     max?: number | undefined;
     regex?: string | undefined;
     options?: string[] | undefined;
+    visibleTo?: Array<"MANAGER" | "APPROVER" | "MEMBER"> | undefined;
+    readOnlyFor?: Array<"MANAGER" | "APPROVER" | "MEMBER"> | undefined;
     calculation?:
       | { op: "ADD" | "SUBTRACT" | "MULTIPLY"; fields: string[] }
       | { op: "PERCENT"; valueField: string; percentField: string }
       | { op: "COLUMN_SUM"; field: string }
       | undefined;
   }>;
+  approvalPolicy?: { fieldKey: string; threshold: number } | undefined;
 };
 
 export async function createTemplate(input: {

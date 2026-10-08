@@ -1,5 +1,13 @@
 import { withTenantTransaction } from "../../db.js";
 import { calculateColumnTotals } from "../templates/calculations.js";
+import {
+  canSeeField,
+  presentFields,
+  readApprovalPolicy,
+  readSchemaFields,
+  redactData,
+  type SectorFieldRole,
+} from "../templates/field-access.js";
 
 export async function getRequestDetail(input: {
   tenantId: string;
@@ -82,16 +90,29 @@ export async function getRequestDetail(input: {
       `SELECT data FROM request_items WHERE request_id = $1 ORDER BY created_at, item_key`,
       [input.requestId],
     );
-    const schemaFields =
-      request.schema_json &&
-      typeof request.schema_json === "object" &&
-      "fields" in (request.schema_json as Record<string, unknown>) &&
-      Array.isArray((request.schema_json as { fields?: unknown }).fields)
-        ? ((request.schema_json as { fields: Array<{ key: string; calculation?: unknown }> }).fields)
-        : [];
+    const viewer = {
+      guest: false,
+      privileged: globalRole === "ADMIN" || globalRole === "AUDITOR",
+      roles: [originRole, destinationRole].filter((role): role is SectorFieldRole => !!role),
+    };
+    const schemaFields = readSchemaFields(request.schema_json);
+    const visibleFields = presentFields(schemaFields, viewer).filter((field) => {
+      const calculation = field.calculation;
+      if (!calculation || calculation.op !== "COLUMN_SUM") return true;
+      const source = schemaFields.find((candidate) => candidate.key === calculation.field);
+      return !!source && canSeeField(source, viewer);
+    });
+    const policy = readApprovalPolicy(request.schema_json);
+    const visiblePolicy = policy && visibleFields.some((field) => field.key === policy.fieldKey)
+      ? policy
+      : undefined;
+    request.schema_json = {
+      fields: visibleFields,
+      ...(visiblePolicy ? { approvalPolicy: visiblePolicy } : {}),
+    };
     const computedTotals = calculateColumnTotals(
-      itemRows.rows.map((row) => row.data),
-      schemaFields as any,
+      itemRows.rows.map((row) => redactData(row.data, schemaFields, viewer)),
+      visibleFields,
     );
 
     return {

@@ -54,6 +54,22 @@ export async function createInAppNotification(
   );
 }
 
+export async function countUnreadNotifications(input: {
+  tenantId: string;
+  userId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const result = await client.query<{ total: number }>(
+      `SELECT count(*)::int AS total
+         FROM notifications
+        WHERE user_id = $1
+          AND read_at IS NULL`,
+      [input.userId],
+    );
+    return result.rows[0]?.total ?? 0;
+  });
+}
+
 export async function listNotifications(input: {
   tenantId: string;
   userId: string;

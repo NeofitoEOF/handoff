@@ -1,4 +1,13 @@
 import { withTenantTransaction } from "../../db.js";
+import {
+  canSeeField,
+  prepareItemData,
+  readApprovalPolicy,
+  readSchemaFields,
+  redactData,
+  requiredApprovals,
+} from "../templates/field-access.js";
+import { loadFieldViewer } from "../templates/field-viewer.js";
 
 async function loadEditableRequest(
   client: import("../../db.js").DbClient,
@@ -57,6 +66,34 @@ export async function upsertRequestItem(input: {
     const permission = await loadEditableRequest(client, input.requestId, input.actorUserId);
     if (permission.kind !== "ok") return permission;
 
+    const schemaRow = await client.query<{
+      schema_json: unknown;
+      origin_sector_id: string;
+    }>(
+      `SELECT tv.schema_json, r.origin_sector_id
+         FROM requests r
+         LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+        WHERE r.id = $1`,
+      [input.requestId],
+    );
+    const fields = readSchemaFields(schemaRow.rows[0]?.schema_json);
+    const viewer = await loadFieldViewer(client, input.actorUserId, [
+      schemaRow.rows[0]?.origin_sector_id ?? permission.request.destination_sector_id,
+      permission.request.destination_sector_id,
+    ]);
+    const existing = await client.query<{ data: Record<string, unknown> }>(
+      `SELECT data FROM request_items
+        WHERE tenant_id = $1 AND request_id = $2 AND item_key = $3`,
+      [input.tenantId, input.requestId, input.itemKey],
+    );
+    const prepared = prepareItemData({
+      existing: existing.rows[0]?.data ?? {},
+      incoming: input.data,
+      fields,
+      viewer,
+    });
+    if (!prepared.ok) return { kind: "field_locked" as const, fields: prepared.fields };
+
     const result = await client.query(
       `INSERT INTO request_items
         (tenant_id, request_id, item_key, data, status, last_edited_by)
@@ -72,7 +109,7 @@ export async function upsertRequestItem(input: {
          updated_at = now()
        WHERE request_items.status IN ('DRAFT', 'RETURNED')
        RETURNING id, item_key, data, status, updated_at`,
-      [input.tenantId, input.requestId, input.itemKey, JSON.stringify(input.data), input.actorUserId],
+      [input.tenantId, input.requestId, input.itemKey, JSON.stringify(prepared.data), input.actorUserId],
     );
 
     if (result.rowCount !== 1) {
@@ -86,7 +123,17 @@ export async function upsertRequestItem(input: {
       [input.tenantId, input.actorUserId, result.rows[0].id, JSON.stringify(result.rows[0])],
     );
 
-    return { kind: "saved" as const, item: result.rows[0] };
+    const saved = result.rows[0] as {
+      id: string;
+      item_key: string;
+      data: Record<string, unknown>;
+      status: string;
+      updated_at: Date;
+    };
+    return {
+      kind: "saved" as const,
+      item: { ...saved, data: redactData(saved.data, fields, viewer) },
+    };
   });
 }
 
@@ -96,34 +143,67 @@ export async function listRequestItems(input: {
   actorUserId: string;
 }) {
   return withTenantTransaction(input.tenantId, async (client) => {
-    const request = await client.query<{ origin_sector_id: string; destination_sector_id: string }>(
-      `SELECT origin_sector_id, destination_sector_id FROM requests WHERE id = $1`,
+    const request = await client.query<{
+      origin_sector_id: string;
+      destination_sector_id: string;
+      schema_json: unknown;
+    }>(
+      `SELECT r.origin_sector_id, r.destination_sector_id, tv.schema_json
+         FROM requests r
+         LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+        WHERE r.id = $1`,
       [input.requestId],
     );
     const current = request.rows[0];
     if (!current) return { kind: "not_found" as const };
 
-    const access = await client.query(
-      `SELECT 1
-         FROM memberships
-        WHERE user_id = $1
-          AND sector_id = ANY($2::uuid[])
-          AND active = true
-        LIMIT 1`,
-      [input.actorUserId, [current.origin_sector_id, current.destination_sector_id]],
-    );
-    if (access.rowCount !== 1) return { kind: "forbidden" as const };
+    const viewer = await loadFieldViewer(client, input.actorUserId, [
+      current.origin_sector_id,
+      current.destination_sector_id,
+    ]);
+    if (!viewer.privileged && viewer.roles.length === 0) return { kind: "forbidden" as const };
 
-    const items = await client.query(
-      `SELECT id, item_key, data, status, last_edited_by, submitted_by, submitted_at,
-              reviewed_by, reviewed_at, return_comment, correction_due_at, updated_at
-         FROM request_items
-        WHERE request_id = $1
-        ORDER BY created_at, item_key`,
+    const fields = readSchemaFields(current.schema_json);
+    const policy = readApprovalPolicy(current.schema_json);
+    const policyField = policy ? fields.find((field) => field.key === policy.fieldKey) : undefined;
+    const revealThreshold = !!policy && (
+      viewer.privileged
+      || viewer.roles.some((role) => role === "MANAGER" || role === "APPROVER")
+      || (!!policyField && canSeeField(policyField, viewer))
+    );
+    const items = await client.query<{
+      id: string;
+      item_key: string;
+      data: Record<string, unknown>;
+      status: string;
+      last_edited_by: string | null;
+      submitted_by: string | null;
+      submitted_at: Date | null;
+      reviewed_by: string | null;
+      reviewed_at: Date | null;
+      return_comment: string | null;
+      correction_due_at: Date | null;
+      updated_at: Date;
+      approval_count: number;
+    }>(
+      `SELECT i.id, i.item_key, i.data, i.status, i.last_edited_by, i.submitted_by, i.submitted_at,
+              i.reviewed_by, i.reviewed_at, i.return_comment, i.correction_due_at, i.updated_at,
+              (SELECT count(*)::int FROM request_item_approvals a WHERE a.request_item_id = i.id) AS approval_count
+         FROM request_items i
+        WHERE i.request_id = $1
+        ORDER BY i.created_at, i.item_key`,
       [input.requestId],
     );
 
-    return { kind: "ok" as const, items: items.rows };
+    return {
+      kind: "ok" as const,
+      items: items.rows.map((item) => ({
+        ...item,
+        data: redactData(item.data, fields, viewer),
+        approval_count: revealThreshold ? item.approval_count : 0,
+        approvals_required: revealThreshold ? requiredApprovals(policy, item.data) : 1,
+      })),
+    };
   });
 }
 

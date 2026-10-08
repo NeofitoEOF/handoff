@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api, downloadAuthenticated } from "../api";
 import { DynamicFields } from "../components/DynamicFields";
+import { statusLabel } from "../format";
 import type { RequestDetail, RequestItem } from "../types";
 
 type ImportPreview = {
@@ -168,8 +169,15 @@ export function RequestPage() {
   async function approve(itemId: string) {
     setLocalError("");
     try {
-      await api(`/v1/requests/${id}/items/${itemId}/approve`, { method: "POST" });
-      setMessage("Item aprovado.");
+      const result = await api<{ approved: boolean; pendingSecond?: boolean; approvals?: number; required?: number }>(
+        `/v1/requests/${id}/items/${itemId}/approve`,
+        { method: "POST" },
+      );
+      setMessage(
+        result.pendingSecond
+          ? `Aprovação registrada (${result.approvals} de ${result.required}). Outra pessoa precisa concluir a alçada.`
+          : "Item aprovado.",
+      );
       await refreshAll();
     } catch (error) {
       setLocalError(errorMessage(error));
@@ -505,9 +513,14 @@ export function RequestPage() {
                   <article className="item-card" key={item.id}>
                     <div className="item-title">
                       <strong>{item.item_key}</strong>
-                      <span className={`status status-${item.status.toLowerCase()}`}>{item.status}</span>
+                      <span className={`status status-${item.status.toLowerCase()}`}>{statusLabel(item.status)}</span>
                     </div>
                     <pre className="data-preview">{JSON.stringify(item.data, null, 2)}</pre>
+                    {item.status === "SUBMITTED" && (item.approvals_required ?? 1) > 1 && (
+                      <p className="muted small">
+                        Alçada: {item.approval_count ?? 0} de {item.approvals_required} aprovações.
+                      </p>
+                    )}
                     {item.return_comment && (
                       <div className="alert warning">
                         {item.return_comment}

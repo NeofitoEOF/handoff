@@ -11,6 +11,22 @@ import {
 import { cloneLibraryTemplate, listTemplateLibrary } from "./template-library.service.js";
 import { inferTemplateFromXlsx } from "./template-inference.service.js";
 
+const sectorRoleSchema = z.enum(["MANAGER", "APPROVER", "MEMBER"]);
+const calculationSchema = z.discriminatedUnion("op", [
+  z.object({
+    op: z.enum(["ADD", "SUBTRACT", "MULTIPLY"]),
+    fields: z.array(z.string().trim().min(1).max(80)).min(1).max(20),
+  }),
+  z.object({
+    op: z.literal("PERCENT"),
+    valueField: z.string().trim().min(1).max(80),
+    percentField: z.string().trim().min(1).max(80),
+  }),
+  z.object({
+    op: z.literal("COLUMN_SUM"),
+    field: z.string().trim().min(1).max(80),
+  }),
+]);
 const fieldSchema = z.object({
   key: z.string().trim().min(1).max(80),
   label: z.string().trim().min(1).max(160),
@@ -20,8 +36,17 @@ const fieldSchema = z.object({
   max: z.number().optional(),
   regex: z.string().max(500).optional(),
   options: z.array(z.string().max(200)).max(500).optional(),
+  visibleTo: z.array(sectorRoleSchema).max(3).optional(),
+  readOnlyFor: z.array(sectorRoleSchema).max(3).optional(),
+  calculation: calculationSchema.optional(),
 });
-const schemaSchema = z.object({ fields: z.array(fieldSchema).min(1).max(200) });
+const schemaSchema = z.object({
+  fields: z.array(fieldSchema).min(1).max(200),
+  approvalPolicy: z.object({
+    fieldKey: z.string().trim().min(1).max(80),
+    threshold: z.number().nonnegative(),
+  }).optional(),
+});
 
 export async function templateRoutes(app: FastifyInstance): Promise<void> {
   app.get("/v1/template-library", { preHandler: app.authenticate }, async () => {

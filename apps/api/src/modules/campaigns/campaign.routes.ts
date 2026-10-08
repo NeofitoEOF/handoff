@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { createCampaign, createRecurrence, getCampaign } from "./campaign.service.js";
+import { createCampaign, createRecurrence, getCampaign, listRecurrences, setRecurrenceActive } from "./campaign.service.js";
 
 export async function campaignRoutes(app: FastifyInstance): Promise<void> {
   app.post("/v1/campaigns", { preHandler: app.authenticate }, async (request, reply) => {
@@ -75,5 +75,30 @@ export async function campaignRoutes(app: FastifyInstance): Promise<void> {
     if (result.kind === "forbidden") return reply.code(403).send({ message: "Somente Gestor do setor pode criar recorrência." });
     if (result.kind === "no_destinations") return reply.code(422).send({ message: "Informe setores de destino." });
     return reply.code(201).send(result.recurrence);
+  });
+
+  app.get("/v1/sectors/:sectorId/recurrences", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = z.object({ sectorId: z.string().uuid() }).parse(request.params);
+    const result = await listRecurrences({
+      tenantId: request.user.tenantId,
+      actorUserId: request.user.sub,
+      sectorId: params.sectorId,
+    });
+    if (result.kind === "forbidden") return reply.code(403).send({ message: "Somente Gestor do setor vê as recorrências." });
+    return reply.send({ data: result.recurrences });
+  });
+
+  app.post("/v1/recurrences/:id/active", { preHandler: app.authenticate }, async (request, reply) => {
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const body = z.object({ active: z.boolean() }).parse(request.body);
+    const result = await setRecurrenceActive({
+      tenantId: request.user.tenantId,
+      actorUserId: request.user.sub,
+      recurrenceId: params.id,
+      active: body.active,
+    });
+    if (result.kind === "not_found") return reply.code(404).send({ message: "Recorrência não encontrada." });
+    if (result.kind === "forbidden") return reply.code(403).send({ message: "Somente Gestor do setor pode pausar a recorrência." });
+    return reply.send({ active: result.active, changed: result.changed });
   });
 }

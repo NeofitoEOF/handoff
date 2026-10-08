@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 
@@ -14,7 +14,9 @@ type Template = {
 
 export function NewRequestPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"single" | "campaign">("single");
+  const [mode, setMode] = useState<"single" | "campaign" | "recurrence">("single");
+  const [frequency, setFrequency] = useState<"WEEKLY" | "MONTHLY">("MONTHLY");
+  const [dueOffsetDays, setDueOffsetDays] = useState(5);
   const [originSectorId, setOriginSectorId] = useState("");
   const [destinationSectorIds, setDestinationSectorIds] = useState<string[]>([]);
   const [templateVersionId, setTemplateVersionId] = useState("");
@@ -24,6 +26,14 @@ export function NewRequestPage() {
   const [instructions, setInstructions] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const session = useQuery({
+    queryKey: ["session"],
+    queryFn: () => api<{ memberships: Array<{ sector_id: string; role: string }> }>("/v1/session"),
+  });
+  const canSchedule = (session.data?.memberships ?? []).some(
+    (membership) => membership.sector_id === originSectorId && membership.role === "MANAGER",
+  );
 
   const sectors = useQuery({
     queryKey: ["sectors"],
@@ -74,6 +84,24 @@ export function NewRequestPage() {
         ...(templateVersionId ? { templateVersionId } : {}),
       };
 
+      if (mode === "recurrence") {
+        await api("/v1/recurrences", {
+          method: "POST",
+          body: JSON.stringify({
+            originSectorId,
+            destinationSectorIds,
+            title,
+            frequency,
+            nextRunAt: new Date(dueAt).toISOString(),
+            dueOffsetDays,
+            ...(instructions ? { instructions } : {}),
+            ...(templateVersionId ? { templateVersionId } : {}),
+          }),
+        });
+        navigate("/inbox?view=sector");
+        return;
+      }
+
       if (mode === "single") {
         const created = await api<{ id: string }>("/v1/requests", {
           method: "POST",
@@ -94,11 +122,7 @@ export function NewRequestPage() {
         }),
       });
 
-      if (campaign.requestIds[0]) {
-        navigate(`/requests/${campaign.requestIds[0]}`);
-      } else {
-        navigate("/inbox?view=sector");
-      }
+      navigate(`/campaigns/${campaign.campaignId}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível criar a solicitação.");
     } finally {
@@ -127,6 +151,11 @@ export function NewRequestPage() {
           <button type="button" className={mode === "campaign" ? "active" : ""} onClick={() => setMode("campaign")}>
             Coleta multi-setor
           </button>
+          {canSchedule && (
+            <button type="button" className={mode === "recurrence" ? "active" : ""} onClick={() => setMode("recurrence")}>
+              Recorrência
+            </button>
+          )}
         </div>
 
         <div className="field-grid">
@@ -165,9 +194,31 @@ export function NewRequestPage() {
           </label>
 
           <label className="field">
-            <span>Prazo</span>
+            <span>{mode === "recurrence" ? "Primeira ocorrência" : "Prazo"}</span>
             <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required />
           </label>
+
+          {mode === "recurrence" && (
+            <>
+              <label className="field">
+                <span>Frequência</span>
+                <select value={frequency} onChange={(e) => setFrequency(e.target.value as typeof frequency)}>
+                  <option value="MONTHLY">Mensal</option>
+                  <option value="WEEKLY">Semanal</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Dias até o prazo de cada ocorrência</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={90}
+                  value={dueOffsetDays}
+                  onChange={(e) => setDueOffsetDays(Number(e.target.value))}
+                />
+              </label>
+            </>
+          )}
         </div>
 
         <div>
@@ -199,11 +250,66 @@ export function NewRequestPage() {
 
         <div className="action-row">
           <button className="primary" disabled={busy}>
-            {busy ? "Criando..." : mode === "single" ? "Criar solicitação" : "Criar coleta"}
+            {busy ? "Criando..." : mode === "single" ? "Criar solicitação" : mode === "campaign" ? "Criar coleta" : "Agendar recorrência"}
           </button>
           <Link className="button secondary" to="/inbox">Cancelar</Link>
         </div>
       </form>
+      {canSchedule && <RecurrenceList sectorId={originSectorId} />}
     </section>
+  );
+}
+
+function RecurrenceList({ sectorId }: { sectorId: string }) {
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["recurrences", sectorId],
+    queryFn: () => api<{ data: Array<{
+      id: string;
+      title: string;
+      frequency: string;
+      next_run_at: string;
+      active: boolean;
+    }> }>(`/v1/sectors/${sectorId}/recurrences`),
+  });
+
+  if (query.isLoading) return null;
+  if (query.error) return <div className="alert error">{query.error.message}</div>;
+
+  async function toggle(id: string, active: boolean) {
+    await api(`/v1/recurrences/${id}/active`, {
+      method: "POST",
+      body: JSON.stringify({ active }),
+    });
+    await client.invalidateQueries({ queryKey: ["recurrences", sectorId] });
+  }
+
+  const rows = query.data?.data ?? [];
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="card table-card">
+      <h2>Recorrências do setor</h2>
+      <p className="muted">Pausar não apaga as ocorrências já criadas.</p>
+      <table>
+        <thead>
+          <tr><th>Título</th><th>Frequência</th><th>Próxima</th><th></th></tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td>{row.title}</td>
+              <td>{row.frequency === "WEEKLY" ? "Semanal" : "Mensal"}</td>
+              <td>{row.active ? new Date(row.next_run_at).toLocaleString("pt-BR") : "Pausada"}</td>
+              <td>
+                <button className="secondary" onClick={() => void toggle(row.id, !row.active)}>
+                  {row.active ? "Pausar" : "Retomar"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

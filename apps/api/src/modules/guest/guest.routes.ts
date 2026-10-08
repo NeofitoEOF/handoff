@@ -105,6 +105,7 @@ export async function guestRoutes(app: FastifyInstance): Promise<void> {
     if (result.kind === "not_found") return reply.code(404).send({ message: "Solicitação não encontrada." });
     if (result.kind === "invalid_state") return reply.code(409).send({ message: "Estado não permite edição.", status: result.status });
     if (result.kind === "item_locked") return reply.code(409).send({ message: "Item está bloqueado." });
+    if (result.kind === "field_locked") return reply.code(422).send({ message: "Há campos ocultos ou somente leitura para convidado.", fields: result.fields });
     return reply.send(result.item);
   });
 

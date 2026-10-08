@@ -436,6 +436,17 @@ Legenda: ✅ implementado · 🟡 parcial · ⏳ pendente
 - 🟡 Aplicação no ambiente real depende de credenciais/URLs e configuração dos contratos
 
 
+## Regras de produto ainda abertas no requisito
+
+- ✅ Permissão de campo no modelo: `visibleTo` e `readOnlyFor` por papel, aplicados na leitura, na gravação, no convidado, na importação e na exportação
+- ✅ Alçada opcional por valor: acima do limite o item exige dois aprovadores distintos, sem o autor da submissão
+- ✅ Painel do setor separa no prazo, atraso de atribuição, atraso de execução, tempo médio até o fechamento e taxa de devolução
+- ✅ Coleta mostra visão consolidada das solicitações-filhas
+- ✅ Recorrência pode ser pausada e retomada sem apagar ocorrências já criadas
+- ✅ Caixa de entrada mostra status em português e prazo em dias; o sino conta notificações não lidas
+- ✅ Menu segue o papel: membro não vê administração, auditoria fica com gestor, admin e auditor
+
+
 ## Encerramento da implementação local
 
 - ✅ Migrations e testes PostgreSQL das quotas contratuais aprovados na CI

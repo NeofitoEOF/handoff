@@ -1,6 +1,13 @@
 import { withTenantTransaction } from "../../db.js";
 import { withGuestSession } from "./guest.service.js";
-import { applyItemCalculations } from "../templates/calculations.js";
+import {
+  prepareItemData,
+  presentFields,
+  readApprovalPolicy,
+  readSchemaFields,
+  redactData,
+} from "../templates/field-access.js";
+import { guestFieldViewer } from "../templates/field-viewer.js";
 
 export async function getGuestRequest(sessionToken: string) {
   return withGuestSession(sessionToken, async (context) => {
@@ -18,18 +25,41 @@ export async function getGuestRequest(sessionToken: string) {
         [context.requestId],
       );
 
-      const items = await client.query(
+      const items = await client.query<{
+        id: string;
+        item_key: string;
+        data: Record<string, unknown>;
+        status: string;
+        return_comment: string | null;
+        correction_due_at: Date | null;
+        updated_at: Date;
+      }>(
         `SELECT id, item_key, data, status, return_comment, correction_due_at, updated_at
            FROM request_items
           WHERE request_id = $1
           ORDER BY created_at, item_key`,
         [context.requestId],
       );
+      const currentRequest = request.rows[0] as { schema_json?: unknown } | undefined;
+      const fields = readSchemaFields(currentRequest?.schema_json);
+      const visibleFields = presentFields(fields, guestFieldViewer);
+      const policy = readApprovalPolicy(currentRequest?.schema_json);
+      if (currentRequest) {
+        currentRequest.schema_json = {
+          fields: visibleFields,
+          ...(policy && visibleFields.some((field) => field.key === policy.fieldKey)
+            ? { approvalPolicy: policy }
+            : {}),
+        };
+      }
 
       return {
         kind: "ok" as const,
-        request: request.rows[0],
-        items: items.rows,
+        request: currentRequest,
+        items: items.rows.map((item) => ({
+          ...item,
+          data: redactData(item.data, fields, guestFieldViewer),
+        })),
         guestEmail: context.email,
       };
     });
@@ -60,9 +90,7 @@ export async function saveGuestItem(input: {
         );
       }
 
-      const schemaResult = await client.query<{
-        schema_json: { fields?: Array<{ key: string; calculation?: unknown }> } | null;
-      }>(
+      const schemaResult = await client.query<{ schema_json: unknown }>(
         `SELECT tv.schema_json
            FROM requests r
            LEFT JOIN template_versions tv ON tv.id = r.template_version_id
@@ -70,10 +98,20 @@ export async function saveGuestItem(input: {
           LIMIT 1`,
         [context.requestId],
       );
-      const guestCalculatedData = applyItemCalculations(
-        input.data,
-        (schemaResult.rows[0]?.schema_json?.fields ?? []) as any,
+      const fields = readSchemaFields(schemaResult.rows[0]?.schema_json);
+      const existing = await client.query<{ data: Record<string, unknown> }>(
+        `SELECT data FROM request_items
+          WHERE tenant_id = $1 AND request_id = $2 AND item_key = $3`,
+        [context.tenantId, context.requestId, input.itemKey],
       );
+      const prepared = prepareItemData({
+        existing: existing.rows[0]?.data ?? {},
+        incoming: input.data,
+        fields,
+        viewer: guestFieldViewer,
+      });
+      if (!prepared.ok) return { kind: "field_locked" as const, fields: prepared.fields };
+      const guestCalculatedData = prepared.data;
 
       const result = await client.query(
         `INSERT INTO request_items
@@ -117,7 +155,9 @@ export async function saveGuestItem(input: {
         ],
       );
 
-      return { kind: "saved" as const, item: result.rows[0] };
+      const saved = result.rows[0] as { data: Record<string, unknown> };
+      saved.data = redactData(saved.data, fields, guestFieldViewer);
+      return { kind: "saved" as const, item: saved };
     });
   });
 }

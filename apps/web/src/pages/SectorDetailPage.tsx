@@ -15,10 +15,15 @@ type Member = {
 type Metric = {
   total: number;
   open: number;
+  onTime: number;
   overdue: number;
-  in_review: number;
-  in_correction: number;
+  assignmentOverdue: number;
+  executionOverdue: number;
+  inReview: number;
+  inCorrection: number;
   closed: number;
+  averageResponseHours: number | null;
+  returnRate: number;
 };
 
 export function SectorDetailPage() {
@@ -28,6 +33,11 @@ export function SectorDetailPage() {
   const [role, setRole] = useState<"MANAGER" | "APPROVER" | "MEMBER">("MEMBER");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const session = useQuery({
+    queryKey: ["session"],
+    queryFn: () => api<{ tenantRole: "ADMIN" | "AUDITOR" | "USER" }>("/v1/session"),
+  });
 
   const members = useQuery({
     queryKey: ["sector-members", id],
@@ -90,11 +100,15 @@ export function SectorDetailPage() {
       {metrics.data && (
         <div className="metric-grid">
           {[
-            ["Abertas", metrics.data.open],
+            ["No prazo", metrics.data.onTime],
             ["Atrasadas", metrics.data.overdue],
-            ["Em revisão", metrics.data.in_review],
-            ["Em correção", metrics.data.in_correction],
+            ["Atraso de atribuição", metrics.data.assignmentOverdue],
+            ["Atraso de execução", metrics.data.executionOverdue],
+            ["Em revisão", metrics.data.inReview],
+            ["Em correção", metrics.data.inCorrection],
             ["Fechadas", metrics.data.closed],
+            ["Tempo médio (h)", metrics.data.averageResponseHours ?? "—"],
+            ["Devolução (%)", metrics.data.returnRate],
           ].map(([label, value]) => (
             <div className="metric-card" key={String(label)}>
               <span>{label}</span>
@@ -114,7 +128,7 @@ export function SectorDetailPage() {
           <select value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
             <option value="MEMBER">Membro</option>
             <option value="APPROVER">Aprovador</option>
-            <option value="MANAGER">Gestor</option>
+            {session.data?.tenantRole === "ADMIN" && <option value="MANAGER">Gestor</option>}
           </select>
         </label>
         <button className="primary">Convidar</button>

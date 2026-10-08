@@ -5,6 +5,9 @@ import { putObject } from "../../storage.js";
 import { scanBuffer } from "../../antivirus.js";
 import { loadDefaultImportMapping } from "./import-mapping.service.js";
 import { checkTenantStorageCapacity } from "../billing/billing.service.js";
+import { applyItemCalculations } from "../templates/calculations.js";
+import { fieldsForEntry, readSchemaFields } from "../templates/field-access.js";
+import { loadFieldViewer } from "../templates/field-viewer.js";
 
 type TemplateField = {
   key: string;
@@ -75,11 +78,12 @@ export async function importXlsx(input: {
     const result = await client.query<{
       status: string;
       assigned_to: string | null;
+      origin_sector_id: string;
       destination_sector_id: string;
       template_version_id: string | null;
       schema_json: { fields: TemplateField[] } | null;
     }>(
-      `SELECT r.status, r.assigned_to, r.destination_sector_id, r.template_version_id,
+      `SELECT r.status, r.assigned_to, r.origin_sector_id, r.destination_sector_id, r.template_version_id,
               tv.schema_json
          FROM requests r
          LEFT JOIN template_versions tv ON tv.id = r.template_version_id
@@ -96,6 +100,12 @@ export async function importXlsx(input: {
     }
     if (!request.schema_json) return { kind: "missing_template" as const };
 
+    const viewer = await loadFieldViewer(client, input.actorUserId, [
+      request.origin_sector_id,
+      request.destination_sector_id,
+    ]);
+    const editableFields = fieldsForEntry(readSchemaFields(request.schema_json), viewer) as TemplateField[];
+
     const membership = await client.query(
       `SELECT 1 FROM memberships
         WHERE sector_id = $1 AND user_id = $2 AND active = true LIMIT 1`,
@@ -103,7 +113,11 @@ export async function importXlsx(input: {
     );
     if (membership.rowCount !== 1) return { kind: "forbidden" as const };
 
-    return { kind: "ok" as const, schema: request.schema_json };
+    return {
+      kind: "ok" as const,
+      schema: { fields: editableFields },
+      allFields: readSchemaFields(request.schema_json),
+    };
   });
 
   if (context.kind !== "ok") return context;
@@ -140,7 +154,12 @@ export async function importXlsx(input: {
       data[field.key] = value;
     }
 
-    if (rowValid) accepted.push({ itemKey: `xlsx-row-${rowNumber}`, data });
+    if (rowValid) {
+      accepted.push({
+        itemKey: `xlsx-row-${rowNumber}`,
+        data: applyItemCalculations(data, context.allFields),
+      });
+    }
   }
 
   return withTenantTransaction(input.tenantId, async (client) => {
@@ -221,7 +240,25 @@ export async function confirmXlsxImport(input: {
     if (current.status !== "VALIDATED") return { kind: "invalid_state" as const, status: current.status };
     if (current.uploaded_by !== input.actorUserId) return { kind: "forbidden" as const };
 
+    const schemaRow = await client.query<{ schema_json: unknown }>(
+      `SELECT tv.schema_json
+         FROM requests r
+         LEFT JOIN template_versions tv ON tv.id = r.template_version_id
+        WHERE r.id = $1`,
+      [input.requestId],
+    );
+    const fields = readSchemaFields(schemaRow.rows[0]?.schema_json);
+
     for (const item of current.staged_items) {
+      const existing = await client.query<{ data: Record<string, unknown> }>(
+        `SELECT data FROM request_items
+          WHERE tenant_id = $1 AND request_id = $2 AND item_key = $3`,
+        [input.tenantId, input.requestId, item.itemKey],
+      );
+      const merged = applyItemCalculations(
+        { ...(existing.rows[0]?.data ?? {}), ...item.data },
+        fields,
+      );
       await client.query(
         `INSERT INTO request_items
           (tenant_id, request_id, item_key, data, status, last_edited_by)
@@ -231,7 +268,7 @@ export async function confirmXlsxImport(input: {
                        status = CASE WHEN request_items.status = 'RETURNED' THEN 'DRAFT' ELSE request_items.status END,
                        updated_at = now()
          WHERE request_items.status IN ('DRAFT', 'RETURNED')`,
-        [input.tenantId, input.requestId, item.itemKey, JSON.stringify(item.data), input.actorUserId],
+        [input.tenantId, input.requestId, item.itemKey, JSON.stringify(merged), input.actorUserId],
       );
     }
 

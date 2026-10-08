@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { dueLabel, statusLabel } from "../format";
 
 type InboxRow = {
   id: string;
@@ -74,8 +75,8 @@ export function InboxPage() {
                   <td><Link to={`/requests/${row.id}`}>{row.title}</Link></td>
                   <td>{row.origin_sector_name} → {row.destination_sector_name}</td>
                   <td>{row.competence ?? "—"}</td>
-                  <td><span className={`status status-${row.status.toLowerCase()}`}>{row.status}</span></td>
-                  <td>{new Date(row.due_at).toLocaleString("pt-BR")}</td>
+                  <td><span className={`status status-${row.status.toLowerCase()}`}>{statusLabel(row.status)}</span></td>
+                  <td className={row.overdue ? "due-late" : ""}>{dueLabel(row.due_at, row.overdue)}</td>
                 </tr>
               ))}
             </tbody>

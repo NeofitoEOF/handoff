@@ -149,7 +149,14 @@ export async function getCampaign(input: {
     const current = campaign.rows[0];
     if (!current) return { kind: "not_found" as const };
 
-    if (!(await isActiveSectorMember(client, current.origin_sector_id, input.actorUserId))) {
+    const member = await isActiveSectorMember(client, current.origin_sector_id, input.actorUserId);
+    const privileged = await client.query(
+      `SELECT 1 FROM tenant_users
+        WHERE user_id = $1 AND active = true AND role IN ('ADMIN', 'AUDITOR')
+        LIMIT 1`,
+      [input.actorUserId],
+    );
+    if (!member && privileged.rowCount !== 1) {
       return { kind: "forbidden" as const };
     }
 
@@ -212,5 +219,64 @@ export async function createRecurrence(input: {
     );
 
     return { kind: "created" as const, recurrence: result.rows[0] };
+  });
+}
+
+export async function listRecurrences(input: {
+  tenantId: string;
+  actorUserId: string;
+  sectorId: string;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    if (!(await isSectorManager(client, input.sectorId, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+    const result = await client.query(
+      `SELECT id, title, frequency, next_run_at, due_offset_days, active, destination_sector_ids
+         FROM recurrences
+        WHERE origin_sector_id = $1
+        ORDER BY next_run_at`,
+      [input.sectorId],
+    );
+    return { kind: "ok" as const, recurrences: result.rows };
+  });
+}
+
+export async function setRecurrenceActive(input: {
+  tenantId: string;
+  actorUserId: string;
+  recurrenceId: string;
+  active: boolean;
+}) {
+  return withTenantTransaction(input.tenantId, async (client) => {
+    const current = await client.query<{ id: string; origin_sector_id: string; active: boolean }>(
+      `SELECT id, origin_sector_id, active FROM recurrences WHERE id = $1 FOR UPDATE`,
+      [input.recurrenceId],
+    );
+    const recurrence = current.rows[0];
+    if (!recurrence) return { kind: "not_found" as const };
+    if (!(await isSectorManager(client, recurrence.origin_sector_id, input.actorUserId))) {
+      return { kind: "forbidden" as const };
+    }
+    if (recurrence.active === input.active) {
+      return { kind: "ok" as const, active: recurrence.active, changed: false };
+    }
+    await client.query(
+      `UPDATE recurrences SET active = $2 WHERE id = $1`,
+      [input.recurrenceId, input.active],
+    );
+    await client.query(
+      `INSERT INTO audit_events
+        (tenant_id, actor_user_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, $2, $3, 'recurrence', $4, $5::jsonb)`,
+      [
+        input.tenantId,
+        input.actorUserId,
+        input.active ? "RECURRENCE_RESUMED" : "RECURRENCE_PAUSED",
+        input.recurrenceId,
+        JSON.stringify({ active: input.active }),
+      ],
+    );
+    return { kind: "ok" as const, active: input.active, changed: true };
   });
 }

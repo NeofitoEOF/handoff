@@ -39,6 +39,7 @@ export async function itemRoutes(app: FastifyInstance): Promise<void> {
       case "not_assignee": return reply.code(403).send({ message: "Solicitação atribuída a outro responsável." });
       case "invalid_state": return reply.code(409).send({ message: "Solicitação não aceita edição neste estado.", status: result.status });
       case "item_locked": return reply.code(409).send({ message: "Item submetido/aprovado está bloqueado." });
+      case "field_locked": return reply.code(422).send({ message: "Há campos ocultos ou somente leitura para o seu papel.", fields: result.fields });
       case "saved": return reply.code(200).send(result.item);
     }
   });

@@ -16,6 +16,9 @@ export type TemplateField = {
   max?: number;
   regex?: string;
   options?: string[];
+  visibleTo?: Array<"MANAGER" | "APPROVER" | "MEMBER">;
+  readOnlyFor?: Array<"MANAGER" | "APPROVER" | "MEMBER">;
+  readOnly?: boolean;
   calculation?:
     | { op: "ADD" | "SUBTRACT" | "MULTIPLY"; fields: string[] }
     | { op: "PERCENT"; valueField: string; percentField: string }
@@ -24,6 +27,7 @@ export type TemplateField = {
 
 export type TemplateSchema = {
   fields: TemplateField[];
+  approvalPolicy?: { fieldKey: string; threshold: number };
 };
 
 export type RequestDetail = {
@@ -67,4 +71,6 @@ export type RequestItem = {
   return_comment?: string | null;
   correction_due_at?: string | null;
   updated_at: string;
+  approval_count?: number;
+  approvals_required?: number;
 };

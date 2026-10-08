@@ -10,6 +10,7 @@ import { InboxPage } from "./pages/InboxPage";
 import { InvitePage } from "./pages/InvitePage";
 import { LoginPage } from "./pages/LoginPage";
 import { MicrosoftCallbackPage } from "./pages/MicrosoftCallbackPage";
+import { CampaignPage } from "./pages/CampaignPage";
 import { NewRequestPage } from "./pages/NewRequestPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { RequestPage } from "./pages/RequestPage";
@@ -34,6 +35,7 @@ export function App() {
           <Route path="/inbox" element={<InboxPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/requests/new" element={<NewRequestPage />} />
+          <Route path="/campaigns/:id" element={<CampaignPage />} />
           <Route path="/requests/:id" element={<RequestPage />} />
           <Route path="/sectors" element={<SectorsPage />} />
           <Route path="/sectors/:id" element={<SectorDetailPage />} />

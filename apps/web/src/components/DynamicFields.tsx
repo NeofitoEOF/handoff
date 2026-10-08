@@ -30,7 +30,7 @@ export function DynamicFields({
                 type="checkbox"
                 checked={Boolean(current)}
                 onChange={(event) => set(field.key, event.target.checked)}
-                disabled={disabled || calculated}
+                disabled={disabled || calculated || field.readOnly}
               />
               <span>{field.label}{field.required ? " *" : ""}</span>
             </label>
@@ -44,7 +44,7 @@ export function DynamicFields({
               <select
                 value={String(current)}
                 required={field.required}
-                disabled={disabled || calculated}
+                disabled={disabled || calculated || field.readOnly}
                 onChange={(event) => set(field.key, event.target.value)}
               >
                 <option value="">Selecione</option>
@@ -72,7 +72,7 @@ export function DynamicFields({
               required={field.required}
               min={field.min}
               max={field.max}
-              disabled={disabled || calculated}
+              disabled={disabled || calculated || field.readOnly}
               onChange={(event) => {
                 if (field.type === "NUMBER" || field.type === "MONEY") {
                   set(field.key, event.target.value === "" ? "" : Number(event.target.value));

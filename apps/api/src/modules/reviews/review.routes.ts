@@ -25,6 +25,14 @@ export async function reviewRoutes(app: FastifyInstance): Promise<void> {
         case "not_found": return reply.code(404).send({ message: "Item não encontrado." });
         case "invalid_state": return reply.code(409).send({ message: "Item não está submetido.", status: result.status });
         case "maker_checker": return reply.code(409).send({ message: "Quem submeteu o item não pode aprová-lo." });
+        case "already_approved": return reply.code(409).send({ message: "Você já aprovou este item. Outra pessoa precisa concluir a alçada." });
+        case "pending_second": return reply.code(200).send({
+          approved: false,
+          pendingSecond: true,
+          approvals: result.approvals,
+          required: result.required,
+          requestStatus: result.requestStatus,
+        });
         case "approved": return reply.code(200).send({ approved: true, requestStatus: result.requestStatus });
       }
     },
