@@ -173,7 +173,7 @@ jobs:
           sha256sum release-manifest.json "$chart" > SHA256SUMS
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: handoff-release-${{ steps.meta.outputs.tag }}
           path: |
