@@ -31,7 +31,7 @@ jobs:
       SMOKE_OTP: ${{ secrets.STAGING_SMOKE_OTP }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Smoke deployed environment
         run: sh scripts/smoke-deploy.sh

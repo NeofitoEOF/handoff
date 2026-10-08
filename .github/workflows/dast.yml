@@ -20,7 +20,7 @@ jobs:
     env:
       TARGET_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.target_url || vars.STAGING_BASE_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate target
         run: |
