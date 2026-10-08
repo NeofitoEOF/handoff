@@ -101,7 +101,7 @@ jobs:
           grep -Fq "ghcr.io/neofitoeof/handoff-worker@$worker_digest" /tmp/handoff-rendered.yaml
           grep -Fq "ghcr.io/neofitoeof/handoff-web@$web_digest" /tmp/handoff-rendered.yaml
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.9.8
 
